@@ -1,0 +1,81 @@
+image: registry.gitlab.com/tankerhq/ci/ci-native:latest
+
+before_script:
+ - poetry install
+
+stages:
+  - check
+  - deploy
+
+.build-from-sources:
+  stage: check
+  when: manual
+
+.build-deployed:
+  stage: check
+  when: manual
+
+check/linux:
+  extends: .build-from-sources
+  tags: [linux]
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-check --use-tanker=same-as-branch --profile gcc8-release-static-bundle
+
+check/linux/deployed:
+  extends: .build-deployed
+  tags: [linux]
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-check --use-tanker=deployed --profile gcc8-release-static-bundle
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - native/
+
+build/android/deployed:
+  extends: .build-deployed
+  tags: [linux]
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-check --use-tanker=deployed --profile android-armv8-release-static-bundle --profile android-x86_64-release-static-bundle --profile android-x86-release-static-bundle --profile android-armv7-release-static-bundle
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - native/
+
+check/macos:
+  extends: .build-from-sources
+  tags: [macos]
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-check --use-tanker=same-as-branch --profile macos-release-static-bundle
+
+check/macos/deployed:
+  extends: .build-deployed
+  tags: [macos]
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-check --use-tanker=deployed --profile macos-release-static-bundle
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - native/
+
+build/ios/deployed:
+  extends: .build-deployed
+  tags: [macos]
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-check --use-tanker=deployed --profile ios-armv8-release-static-bundle --profile ios-x86_64-release-static-bundle
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - native/
+
+deploy/all:
+  stage: deploy
+  tags: [linux]
+  only:
+    - tags
+  when: manual
+  script:
+    - poetry run python run-ci.py deploy
+  artifacts:
+    expire_in: 7 day
+    paths:
+      - release/
