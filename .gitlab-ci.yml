@@ -79,3 +79,20 @@ deploy/all:
     expire_in: 7 day
     paths:
       - release/
+
+mirror:
+  tags:
+    - linux
+  stage: deploy
+  only:
+    # mirror public tags, releases branches
+    # feature branches, and master
+    - /\Av[0-9.]+\z/
+    - master
+    - /\Arelease/.*\z/
+    - /\Afeat\/.+\z/   # feat/ branches
+  except:
+    - schedules
+  script:
+    - poetry run python run-ci.py mirror
+
