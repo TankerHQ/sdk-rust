@@ -16,7 +16,7 @@ import tankerci.git
 
 
 DEPLOYED_TANKER = "tanker/2.6.2@tanker/stable"
-LOCAL_TANKER = "tanker/dev@"
+LOCAL_TANKER = "tanker/dev@tanker/local"
 
 
 class TankerSource(Enum):
@@ -304,11 +304,15 @@ def setup_tree(args: Any) -> TreeConfig:
     src_path = Path.getcwd()
 
     if args.tanker_source == TankerSource.LOCAL:
-        tankerci.conan.export(src_path=Path.getcwd().parent / "sdk-native")
+        tankerci.conan.export(
+            src_path=Path.getcwd().parent / "sdk-native", ref_or_channel=LOCAL_TANKER
+        )
     elif args.tanker_source == TankerSource.SAME_AS_BRANCH:
         workspace = tankerci.git.prepare_sources(repos=["sdk-native", "sdk-rust"])
         src_path = workspace / "sdk-rust"
-        tankerci.conan.export(src_path=workspace / "sdk-native")
+        tankerci.conan.export(
+            src_path=workspace / "sdk-native", ref_or_channel=LOCAL_TANKER
+        )
 
     return TreeConfig(src_path=src_path, tanker_source=args.tanker_source)
 
