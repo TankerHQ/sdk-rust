@@ -1,5 +1,4 @@
 from typing import List, Iterator
-from dataclasses import dataclass
 import os
 import argparse
 import json
@@ -294,13 +293,7 @@ class Builder:
         tankerci.run("cargo", "test", "--target", self.target_triple, cwd=self.src_path)
 
 
-@dataclass
-class TreeConfig:
-    src_path: Path
-    tanker_source: Path
-
-
-def setup_tree(tanker_source: TankerSource) -> TreeConfig:
+def setup_tree(tanker_source: TankerSource) -> (str, str):
     src_path = Path.getcwd()
 
     if tanker_source == TankerSource.LOCAL:
@@ -314,17 +307,15 @@ def setup_tree(tanker_source: TankerSource) -> TreeConfig:
             src_path=workspace / "sdk-native", ref_or_channel=LOCAL_TANKER
         )
 
-    return TreeConfig(src_path=src_path, tanker_source=tanker_source)
+    return src_path, tanker_source
 
 
 def build_and_test(tanker_source: TankerSource, profiles: List[str]) -> None:
-    tree_config = setup_tree(tanker_source)
+    src_path, tanker_source = setup_tree(tanker_source)
 
     for profile in profiles:
         builder = Builder(
-            src_path=tree_config.src_path,
-            tanker_source=tree_config.tanker_source,
-            profile=profile,
+            src_path=src_path, tanker_source=tanker_source, profile=profile
         )
         builder.install_sdk_native()
         builder.build()
