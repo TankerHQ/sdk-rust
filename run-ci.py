@@ -1,4 +1,4 @@
-from typing import Any, List, Iterator
+from typing import List, Iterator
 from dataclasses import dataclass
 import os
 import argparse
@@ -300,27 +300,27 @@ class TreeConfig:
     tanker_source: Path
 
 
-def setup_tree(args: Any) -> TreeConfig:
+def setup_tree(tanker_source: TankerSource) -> TreeConfig:
     src_path = Path.getcwd()
 
-    if args.tanker_source == TankerSource.LOCAL:
+    if tanker_source == TankerSource.LOCAL:
         tankerci.conan.export(
             src_path=Path.getcwd().parent / "sdk-native", ref_or_channel=LOCAL_TANKER
         )
-    elif args.tanker_source == TankerSource.SAME_AS_BRANCH:
+    elif tanker_source == TankerSource.SAME_AS_BRANCH:
         workspace = tankerci.git.prepare_sources(repos=["sdk-native", "sdk-rust"])
         src_path = workspace / "sdk-rust"
         tankerci.conan.export(
             src_path=workspace / "sdk-native", ref_or_channel=LOCAL_TANKER
         )
 
-    return TreeConfig(src_path=src_path, tanker_source=args.tanker_source)
+    return TreeConfig(src_path=src_path, tanker_source=tanker_source)
 
 
-def check(args: argparse.Namespace) -> None:
-    tree_config = setup_tree(args)
+def build_and_test(tanker_source: TankerSource, profiles: List[str]) -> None:
+    tree_config = setup_tree(tanker_source)
 
-    for profile in args.profiles:
+    for profile in profiles:
         builder = Builder(
             src_path=tree_config.src_path,
             tanker_source=tree_config.tanker_source,
@@ -369,7 +369,7 @@ def main() -> None:
     )
     subparsers = parser.add_subparsers(title="subcommands", dest="command")
 
-    build_parser = subparsers.add_parser("build-and-check")
+    build_parser = subparsers.add_parser("build-and-test")
     build_parser.add_argument(
         "--profile", dest="profiles", action="append", required=True
     )
@@ -388,8 +388,8 @@ def main() -> None:
         tankerci.conan.set_home_isolation()
         tankerci.conan.update_config()
 
-    if args.command == "build-and-check":
-        check(args)
+    if args.command == "build-and-test":
+        build_and_test(args.tanker_source, args.profiles)
     elif args.command == "deploy":
         deploy(args)
     elif args.command == "mirror":
