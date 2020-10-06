@@ -1,12 +1,9 @@
-from typing import Any, List, Iterator
-from dataclasses import dataclass
+from typing import List, Iterator
 import os
 import argparse
 import json
-import subprocess
 import sys
 import platform
-import textwrap
 from enum import Enum
 
 import attr
@@ -18,7 +15,7 @@ import tankerci.git
 
 
 DEPLOYED_TANKER = "tanker/2.6.2@tanker/stable"
-LOCAL_TANKER = "tanker/dev@"
+LOCAL_TANKER = "tanker/dev@tanker/local"
 
 
 class TankerSource(Enum):
@@ -296,33 +293,29 @@ class Builder:
         tankerci.run("cargo", "test", "--target", self.target_triple, cwd=self.src_path)
 
 
-@dataclass
-class TreeConfig:
-    src_path: Path
-    tanker_source: Path
-
-
-def setup_tree(args: Any) -> TreeConfig:
+def setup_tree(tanker_source: TankerSource) -> (str, str):
     src_path = Path.getcwd()
 
-    if args.tanker_source == TankerSource.LOCAL:
-        tankerci.conan.export(src_path=Path.getcwd().parent / "sdk-native")
-    elif args.tanker_source == TankerSource.SAME_AS_BRANCH:
+    if tanker_source == TankerSource.LOCAL:
+        tankerci.conan.export(
+            src_path=Path.getcwd().parent / "sdk-native", ref_or_channel=LOCAL_TANKER
+        )
+    elif tanker_source == TankerSource.SAME_AS_BRANCH:
         workspace = tankerci.git.prepare_sources(repos=["sdk-native", "sdk-rust"])
         src_path = workspace / "sdk-rust"
-        tankerci.conan.export(src_path=workspace / "sdk-native")
+        tankerci.conan.export(
+            src_path=workspace / "sdk-native", ref_or_channel=LOCAL_TANKER
+        )
 
-    return TreeConfig(src_path=src_path, tanker_source=args.tanker_source)
+    return src_path, tanker_source
 
 
-def check(args: argparse.Namespace) -> None:
-    tree_config = setup_tree(args)
+def build_and_test(tanker_source: TankerSource, profiles: List[str]) -> None:
+    src_path, tanker_source = setup_tree(tanker_source)
 
-    for profile in args.profiles:
+    for profile in profiles:
         builder = Builder(
-            src_path=tree_config.src_path,
-            tanker_source=tree_config.tanker_source,
-            profile=profile,
+            src_path=src_path, tanker_source=tanker_source, profile=profile
         )
         builder.install_sdk_native()
         builder.build()
@@ -367,7 +360,7 @@ def main() -> None:
     )
     subparsers = parser.add_subparsers(title="subcommands", dest="command")
 
-    build_parser = subparsers.add_parser("build-and-check")
+    build_parser = subparsers.add_parser("build-and-test")
     build_parser.add_argument(
         "--profile", dest="profiles", action="append", required=True
     )
@@ -386,8 +379,8 @@ def main() -> None:
         tankerci.conan.set_home_isolation()
         tankerci.conan.update_config()
 
-    if args.command == "build-and-check":
-        check(args)
+    if args.command == "build-and-test":
+        build_and_test(args.tanker_source, args.profiles)
     elif args.command == "deploy":
         deploy(args)
     elif args.command == "mirror":
