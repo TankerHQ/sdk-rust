@@ -66,13 +66,10 @@ TARGET_LIST = [
 
 
 def profile_to_rust_target(profile: str) -> str:
-    split_profile = profile.split("-")
-    if len(split_profile) >= 2:
-        (platform, arch, *_) = split_profile
-    else:
-        (platform, arch) = (profile, "")
+    platform = tankerci.conan.get_profile_key("settings.os", profile)
+    arch = tankerci.conan.get_profile_key("settings.arch", profile)
 
-    if platform == "android":
+    if platform == "Android":
         if arch == "armv7":
             return "armv7-linux-androideabi"
         elif arch == "armv8":
@@ -81,14 +78,14 @@ def profile_to_rust_target(profile: str) -> str:
             return "x86_64-linux-android"
         elif arch == "x86":
             return "i686-linux-android"
-    elif platform == "macos":
+    elif platform == "Macos":
         return "x86_64-apple-darwin"
-    elif platform == "ios":
+    elif platform == "iOS":
         if arch == "armv8":
             return "aarch64-apple-ios"
         elif arch == "x86_64":
             return "x86_64-apple-ios"
-    elif platform.startswith("gcc") or platform.startswith("clang"):
+    elif platform == "Linux":
         return "x86_64-unknown-linux-gnu"
 
     raise Exception("Unsupported target architecture: " + profile)
@@ -102,11 +99,11 @@ def is_host_target(profile: str) -> bool:
 
 
 def is_android_target(profile: str) -> bool:
-    return profile.startswith("android-")
+    return tankerci.conan.get_profile_key("settings.os", profile) == "Android"
 
 
 def is_ios_target(profile: str) -> bool:
-    return profile.startswith("ios-")
+    return tankerci.conan.get_profile_key("settings.os", profile) == "iOS"
 
 
 def get_android_bin_path() -> Path:
