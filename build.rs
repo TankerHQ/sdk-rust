@@ -63,6 +63,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     std::io::stdout().write_all(bindings_folder).unwrap();
     println!();
     println!("cargo:rustc-link-lib=static={}", TANKER_LIB_BASENAME);
+    match target_triple.as_str() {
+        "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
+        "x86_64-apple-darwin" => {
+            println!("cargo:rustc-link-lib=dylib=c++");
+            println!("cargo:rustc-link-lib=dylib=c++abi");
+        }
+        _ => (),
+    }
 
     Ok(())
 }
