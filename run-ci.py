@@ -225,6 +225,8 @@ class Builder:
         package_libs = self.package_path / "deplibs"
         package_libs.makedirs_p()
         for lib in libs:
+            if "tanker_admin-c" in lib:
+                continue
             Path(lib).copy(package_libs)
         if stdcpplibs_path.exists():
             for stdcpplib in stdcpplibs_path.files("*.a"):
