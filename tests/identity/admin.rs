@@ -1,3 +1,6 @@
+mod rest;
+pub use rest::admin_rest_request;
+
 mod block;
 use block::serialized_root_block;
 
@@ -6,7 +9,7 @@ use ed25519_dalek::Keypair;
 use rand::rngs::OsRng;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde_json::Value;
-use tankersdk::{Error, ErrorCode};
+use tankersdk::Error;
 
 #[derive(Debug)]
 pub struct Admin {
@@ -56,11 +59,8 @@ impl Admin {
         }
         let json: Value = json.into();
 
-        let reply = Self::do_request(self.client.post(&self.make_url("")).json(&json)).await?;
-        let reply: Value = serde_json::from_str(&reply).unwrap();
-
-        let json_app = &reply.as_object().unwrap()["app"];
-        let json_app = json_app.as_object().unwrap();
+        let reply = admin_rest_request(self.client.post(&self.make_url("")).json(&json)).await?;
+        let json_app = reply["app"].as_object().unwrap();
 
         Ok(App {
             url: self.api_url.clone(),
@@ -71,7 +71,7 @@ impl Admin {
     }
 
     pub async fn delete_app(&self, id: &str) -> Result<(), Error> {
-        Self::do_request(self.client.delete(&self.make_url(id))).await?;
+        admin_rest_request(self.client.delete(&self.make_url(id))).await?;
         Ok(())
     }
 
@@ -91,33 +91,8 @@ impl Admin {
         }
         let json: Value = json.into();
 
-        Self::do_request(self.client.patch(&url).json(&json)).await?;
+        admin_rest_request(self.client.patch(&url).json(&json)).await?;
         Ok(())
-    }
-
-    async fn do_request(req: reqwest::RequestBuilder) -> Result<String, Error> {
-        let reply = match req.send().await {
-            Err(e) => {
-                return Err(Error::new_with_source(
-                    ErrorCode::NetworkError,
-                    "app_update network request failed".into(),
-                    e,
-                ))
-            }
-            Ok(reply) => reply,
-        };
-
-        let status = reply.status();
-        let reply = reply.text().await.unwrap();
-
-        if status.is_success() {
-            Ok(reply)
-        } else {
-            Err(Error::new(
-                ErrorCode::InternalError,
-                format!("Failed to update app: {}", reply),
-            ))
-        }
     }
 
     fn make_url(&self, id: &str) -> String {
