@@ -1,5 +1,7 @@
-use std::ffi::CString;
-use tankersdk::{cadmin, Error};
+use super::admin::admin_rest_request;
+use reqwest::header::ACCEPT;
+use serde_json::json;
+use tankersdk::Error;
 
 #[derive(Debug, Clone)]
 pub struct App {
@@ -11,10 +13,18 @@ pub struct App {
 
 impl App {
     pub async fn get_verification_code(&self, email: &str) -> Result<String, Error> {
-        let curl = CString::new(self.url.as_str()).unwrap();
-        let cid = CString::new(self.id.as_str()).unwrap();
-        let cauth_token = CString::new(self.auth_token.as_str()).unwrap();
-        let cemail = CString::new(email).unwrap();
-        cadmin::get_verification_code(&curl, &cid, &cauth_token, &cemail).await
+        let client = reqwest::Client::new();
+        let reply = admin_rest_request(
+            client
+                .post(&format!("{}/verification/email/code", &self.url))
+                .json(
+                    &json!({ "email": email, "app_id": &self.id, "auth_token": &self.auth_token }),
+                )
+                .header(ACCEPT, "application/json"),
+        )
+        .await?;
+
+        let code = reply["verification_code"].as_str().unwrap().to_owned();
+        Ok(code)
     }
 }
