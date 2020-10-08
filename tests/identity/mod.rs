@@ -21,6 +21,7 @@ const APP_PUBLIC_KEY_SIZE: usize = 32;
 const AUTHOR_SIZE: usize = 32;
 const BLOCK_HASH_SIZE: usize = 32;
 const USER_SECRET_SIZE: usize = 32;
+const SIGNATURE_SIZE: usize = 64;
 
 pub fn hash_user_id(app_id: &[u8], user_id: &str) -> Vec<u8> {
     let mut hasher = VarBlake2b::new(BLOCK_HASH_SIZE).unwrap();

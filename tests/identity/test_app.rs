@@ -6,13 +6,16 @@ use config::{Config, OIDCConfig};
 use super::Admin;
 use super::App;
 use crate::identity::{create_identity, create_provisional_identity, get_public_identity};
+use double_checked_cell_async::DoubleCheckedCell;
 use futures::executor::block_on;
-use once_cell::sync::OnceCell;
+use lazy_static::lazy_static;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification};
 
-static GLOBAL_APP: OnceCell<TestApp> = OnceCell::new();
+lazy_static! {
+    static ref GLOBAL_APP: DoubleCheckedCell<TestApp> = DoubleCheckedCell::new();
+}
 
 pub struct TestApp {
     config: Config,
@@ -30,7 +33,7 @@ impl TestApp {
                 )
             }
         }));
-        GLOBAL_APP.get_or_init(|| block_on(TestApp::new()))
+        GLOBAL_APP.get_or_init(TestApp::new()).await
     }
 
     pub fn make_options(&self) -> Options {
@@ -40,10 +43,14 @@ impl TestApp {
 
     async fn new() -> Self {
         let config = Config::new();
-        let admin = Admin::new(&config.admin_url, &config.id_token, &config.api_url)
-            .await
-            .unwrap();
-        let app = admin.create_app("rust-test").await.unwrap();
+        let admin = Admin::new(
+            config.admin_url.clone(),
+            config.id_token.clone(),
+            config.api_url.clone(),
+        )
+        .await
+        .unwrap();
+        let app = admin.create_app("rust-test", true).await.unwrap();
         Self { config, admin, app }
     }
 
@@ -55,7 +62,11 @@ impl TestApp {
         self.app.get_verification_code(email).await
     }
 
-    pub async fn app_update(&self, oidc_client_id: &str, oidc_provider: &str) -> Result<(), Error> {
+    pub async fn app_update(
+        &self,
+        oidc_client_id: Option<&str>,
+        oidc_provider: Option<&str>,
+    ) -> Result<(), Error> {
         self.admin
             .app_update(&self.app.id, oidc_client_id, oidc_provider)
             .await
