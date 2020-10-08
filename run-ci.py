@@ -273,13 +273,6 @@ class Builder:
             "--",
             "-I", include_path,
         )
-        tankerci.run(
-            "bindgen", "--no-layout-tests",
-            include_path / "ctanker" / "admin.h",
-            "-o", self.native_path / "cadmin.rs",
-            "--",
-            "-I", include_path,
-        )
         # fmt: on
 
     def test(self) -> None:

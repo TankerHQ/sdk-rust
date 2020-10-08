@@ -24,7 +24,4 @@ pub use verification_methods::*;
 mod verification;
 pub use verification::*;
 
-// Native bindings (cadmin is exported for integration tests only)
-#[doc(hidden)]
-pub mod cadmin;
 mod ctanker;
