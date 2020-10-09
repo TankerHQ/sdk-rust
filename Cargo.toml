@@ -15,6 +15,7 @@ tokio = { version = "0.2", features = ["sync"] }
 [dev-dependencies]
 tokio = { version = "0.2", features = ["macros", "rt-threaded"] }
 reqwest = { version = "0.10.8", features = ["json"] }
+openssl = { version = "0.10", features = ["vendored"] }
 serde_json = "1.0"
 double-checked-cell-async = "2.0.2"
 rand = "0.7.3"
