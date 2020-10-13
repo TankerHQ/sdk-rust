@@ -25,7 +25,7 @@ check/linux/deployed:
   extends: .build-deployed
   tags: [linux]
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile gcc8-release-static-bundle
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile gcc8-release-static
   artifacts:
     expire_in: 1 day
     paths:
@@ -35,7 +35,7 @@ build/android/deployed:
   extends: .build-deployed
   tags: [linux]
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static-bundle --profile android-x86_64-release-static-bundle --profile android-x86-release-static-bundle --profile android-armv7-release-static-bundle
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static-bundle --profile android-x86_64-release-static-bundle --profile android-x86-release-static --profile android-armv7-release-static
   artifacts:
     expire_in: 1 day
     paths:
@@ -51,7 +51,7 @@ check/macos/deployed:
   extends: .build-deployed
   tags: [macos]
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-release-static-bundle
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-release-static
   artifacts:
     expire_in: 1 day
     paths:
@@ -61,7 +61,7 @@ build/ios/deployed:
   extends: .build-deployed
   tags: [macos]
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-static-bundle --profile ios-x86_64-release-static-bundle
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-static --profile ios-x86_64-release-static
   artifacts:
     expire_in: 1 day
     paths:
