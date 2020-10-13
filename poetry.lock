@@ -106,7 +106,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "colorama"
-version = "0.4.3"
+version = "0.4.4"
 description = "Cross-platform colored terminal text."
 category = "dev"
 optional = false
@@ -600,7 +600,7 @@ widechars = ["wcwidth"]
 
 [[package]]
 name = "tankerci"
-version = "2020.10.2903"
+version = "2020.10.2916"
 description = "Tanker CI library"
 category = "dev"
 optional = false
@@ -799,8 +799,7 @@ click = [
     {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
 ]
 colorama = [
-    {file = "colorama-0.4.3-py2.py3-none-any.whl", hash = "sha256:7d73d2a99753107a36ac6b455ee49046802e59d9d076ef8e47b61499fa29afff"},
-    {file = "colorama-0.4.3.tar.gz", hash = "sha256:e96da0d330793e2cb9485e9ddfd918d456036c7149416295932478192f4436a1"},
+    {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
 ]
 conan = [
     {file = "conan-1.29.2.tar.gz", hash = "sha256:901f119287fa1dc909910d52c8180aef1f76297a87d57dd0ba9b118de3ed1b50"},
@@ -1093,8 +1092,8 @@ tabulate = [
     {file = "tabulate-0.8.7.tar.gz", hash = "sha256:db2723a20d04bcda8522165c73eea7c300eda74e0ce852d9022e0159d7895007"},
 ]
 tankerci = [
-    {file = "tankerci-2020.10.2903-py3-none-any.whl", hash = "sha256:8eafdc1e851d73fb4f14a57719df693f0d4fd98bdb4d0d3d23c141fec6a5aa80"},
-    {file = "tankerci-2020.10.2903.tar.gz", hash = "sha256:b712084da039785e519bbc4733ea05964f6ec9378618688508b3df9932e667b2"},
+    {file = "tankerci-2020.10.2916-py3-none-any.whl", hash = "sha256:53d42cca5825f551e22d2bf2b5c7a207e1d016ed289e25475201958a3db0c039"},
+    {file = "tankerci-2020.10.2916.tar.gz", hash = "sha256:90003f19fa0e72147556807d25842f65ed7adc9bef722a0bc05466fa4d5f5ea4"},
 ]
 tbump = [
     {file = "tbump-6.0.5-py3-none-any.whl", hash = "sha256:e6a4f82d9e4b341e3c00a20fcad73b0eb2880b6e53767cad288b143bf3cd8bd4"},
