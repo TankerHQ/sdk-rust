@@ -1,98 +1,127 @@
-image: registry.gitlab.com/tankerhq/ci/ci-native:latest
+include:
+  project: TankerHQ/gitlab-ci-files
+  file: /rust.yml
+  ref: theo/rust
 
-before_script:
- - poetry install
-
-stages:
-  - check
-  - deploy
-
-.build-from-sources:
-  stage: check
-  when: manual
-
-.build-deployed:
-  stage: check
-  when: manual
-
-check/linux:
-  extends: .build-from-sources
-  tags: [linux]
+check/native-from-sources/linux:
+  extends:
+    - .check
+    - .tags/linux
+    - .rules/native-from-sources
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile gcc8-release
 
-check/linux/deployed:
-  extends: .build-deployed
-  tags: [linux]
+check/native-from-sources/android:
+  extends:
+    - .check
+    - .tags/linux
+    - .rules/native-from-sources
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile gcc8-release-static
-  artifacts:
-    expire_in: 1 day
-    paths:
-      - native/
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
 
-build/android/deployed:
-  extends: .build-deployed
-  tags: [linux]
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static-bundle --profile android-x86_64-release-static-bundle --profile android-x86-release-static --profile android-armv7-release-static
-  artifacts:
-    expire_in: 1 day
-    paths:
-      - native/
-
-check/macos:
-  extends: .build-from-sources
-  tags: [macos]
+check/native-from-sources/macos:
+  extends:
+    - .check
+    - .tags/macos
+    - .rules/native-from-sources
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile macos-release
 
-check/macos/deployed:
-  extends: .build-deployed
-  tags: [macos]
+check/native-from-sources/ios:
+  extends:
+    - .check
+    - .tags/macos
+    - .rules/native-from-sources
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-release-static
-  artifacts:
-    expire_in: 1 day
-    paths:
-      - native/
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile ios-armv8-release --profile ios-x86_64-release
 
-build/ios/deployed:
-  extends: .build-deployed
-  tags: [macos]
+check/deployed-native/linux:
+  extends:
+    - .check
+    - .tags/linux
+    - .rules/deployed-native
+    - .release-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-static --profile ios-x86_64-release-static
-  artifacts:
-    expire_in: 1 day
-    paths:
-      - native/
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile gcc8-release
 
-deploy/all:
-  stage: deploy
-  tags: [linux]
-  only:
-    - tags
-  when: manual
+check/deployed-native/android:
+  extends:
+    - .check
+    - .tags/linux
+    - .rules/deployed-native
+    - .release-artifacts
   script:
-    - poetry run python run-ci.py deploy
-  artifacts:
-    expire_in: 7 day
-    paths:
-      - release/
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
+
+check/deployed-native/macos:
+  extends:
+    - .check
+    - .tags/macos
+    - .rules/deployed-native
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-release
+
+check/deployed-native/ios:
+  extends:
+    - .check
+    - .tags/macos
+    - .rules/deployed-native
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release --profile ios-x86_64-release
+
+check/downstream/linux:
+  extends:
+    - .check
+    - .tags/linux
+    - .rules/check/downstream/linux
+    - .before-script/download-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile gcc8-release
+
+check/downstream/android:
+  extends:
+    - .check
+    - .tags/linux
+    - .rules/check/downstream/linux
+    - .before-script/download-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
+
+check/downstream/ios:
+  extends:
+    - .check
+    - .tags/macos
+    - .rules/check/downstream/macos
+    - .before-script/download-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile ios-armv8-release --profile ios-x86_64-release
+
+check/downstream/macos:
+  extends:
+    - .check
+    - .tags/macos
+    - .rules/check/downstream/macos
+    - .before-script/download-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile macos-release
+
+deploy:
+  extends:
+    - .deploy
+    - .tags/linux
+    - .rules/deploy/rust
+  script:
+    - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION
+  release:
+    description: sdk-python v$SDK_RUST_RELEASE_VERSION
+    tag_name: v$SDK_RUST_RELEASE_VERSION
 
 mirror:
-  tags:
-    - linux
-  stage: deploy
-  only:
-    # mirror public tags, releases branches
-    # feature branches, and master
-    - /\Av[0-9.]+\z/
-    - master
-    - /\Arelease/.*\z/
-    - /\Afeat\/.+\z/   # feat/ branches
-  except:
-    - schedules
+  extends:
+    - .deploy
+    - .tags/linux
+    - .rules/mirror
   script:
     - poetry run python run-ci.py mirror
-
