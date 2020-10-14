@@ -39,7 +39,7 @@ check/deployed-native/linux:
   extends:
     - .check
     - .tags/linux
-    - .rules/deployed-native
+    - .rules/deployed-native/release-artifacts
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile gcc8-release
@@ -48,7 +48,7 @@ check/deployed-native/android:
   extends:
     - .check
     - .tags/linux
-    - .rules/deployed-native
+    - .rules/deployed-native/release-artifacts
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
@@ -57,7 +57,7 @@ check/deployed-native/macos:
   extends:
     - .check
     - .tags/macos
-    - .rules/deployed-native
+    - .rules/deployed-native/release-artifacts
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-release
@@ -66,7 +66,7 @@ check/deployed-native/ios:
   extends:
     - .check
     - .tags/macos
-    - .rules/deployed-native
+    - .rules/deployed-native/release-artifacts
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release --profile ios-x86_64-release
@@ -84,7 +84,7 @@ check/downstream/android:
   extends:
     - .check
     - .tags/linux
-    - .rules/check/downstream/linux
+    - .rules/check/downstream/android
     - .before-script/download-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
@@ -93,7 +93,7 @@ check/downstream/ios:
   extends:
     - .check
     - .tags/macos
-    - .rules/check/downstream/macos
+    - .rules/check/downstream/ios
     - .before-script/download-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile ios-armv8-release --profile ios-x86_64-release

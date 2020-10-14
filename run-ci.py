@@ -10,10 +10,8 @@ import tankerci
 from tankerci.conan import TankerSource
 import tankerci.conan
 import tankerci.git
+import tankerci.gitlab
 from tankerci.build_info import DepsConfig
-
-
-DEPLOYED_TANKER = "tanker/2.6.2@tanker/stable"
 
 
 TARGET_LIST = [
@@ -230,8 +228,7 @@ def deploy(args: argparse.Namespace) -> None:
     if missing_targets:
         ui.fatal("Aborting deploy because of missing targets:", *missing_targets)
 
-    git_tag = os.environ["CI_COMMIT_TAG"]
-    version = tankerci.version_from_git_tag(git_tag)
+    version = args.version
     tankerci.bump_files(version)
 
     Path("release").makedirs_p()
@@ -283,7 +280,15 @@ def main() -> None:
         "--update", action="store_true", default=False, dest="update"
     )
 
-    subparsers.add_parser("deploy")
+    reset_branch_parser = subparsers.add_parser("reset-branch")
+    reset_branch_parser.add_argument("branch")
+
+    download_artifacts_parser = subparsers.add_parser("download-artifacts")
+    download_artifacts_parser.add_argument("--project-id", required=True)
+    download_artifacts_parser.add_argument("--pipeline-id", required=True)
+    download_artifacts_parser.add_argument("--job-name", required=True)
+    deploy_parser = subparsers.add_parser("deploy")
+    deploy_parser.add_argument("--version", required=True)
     subparsers.add_parser("mirror")
 
     args = parser.parse_args()
@@ -302,6 +307,18 @@ def main() -> None:
             test=False,
             update=args.update,
             tanker_ref=args.tanker_ref,
+        )
+    elif args.command == "reset-branch":
+        fallback = os.environ["CI_COMMIT_REF_NAME"]
+        ref = tankerci.git.find_ref(
+            Path.getcwd(), [f"origin/{args.branch}", f"origin/{fallback}"]
+        )
+        tankerci.git.reset(Path.getcwd(), ref)
+    elif args.command == "download-artifacts":
+        tankerci.gitlab.download_artifacts(
+            project_id=args.project_id,
+            pipeline_id=args.pipeline_id,
+            job_name=args.job_name,
         )
     elif args.command == "mirror":
         tankerci.git.mirror(github_url="git@github.com:TankerHQ/sdk-rust")
