@@ -1,0 +1,2 @@
+[registries]
+tanker-alexandrie-dev = { index = "https://crates.dev.tanker.io" }
