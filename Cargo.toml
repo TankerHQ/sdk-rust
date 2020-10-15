@@ -5,6 +5,7 @@ edition = "2018"
 authors = ["Tanker Team <contact@tanker.io>"]
 license = "Apache-2.0"
 publish = ["tanker-alexandrie-dev"]
+include = ["native", "src", "tests", "build.rs"]
 
 [dependencies]
 futures = "0.3"

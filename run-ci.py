@@ -15,14 +15,14 @@ from tankerci.build_info import DepsConfig
 
 
 TARGET_LIST = [
-    "armv7-linux-androideabi",
-    "aarch64-linux-android",
-    "x86_64-linux-android",
-    "i686-linux-android",
-    "aarch64-apple-ios",
-    "x86_64-apple-ios",
+    # "armv7-linux-androideabi",
+    # "aarch64-linux-android",
+    # "x86_64-linux-android",
+    # "i686-linux-android",
+    # "aarch64-apple-ios",
+    # "x86_64-apple-ios",
     "x86_64-apple-darwin",
-    "x86_64-unknown-linux-gnu",
+    # "x86_64-unknown-linux-gnu",
 ]
 
 
