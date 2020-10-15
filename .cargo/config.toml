@@ -1,0 +1,6 @@
+[registries]
+tanker-alexandrie-dev = { index = "https://gitlab.com/TankerHQ/rust-dev-crate-index" }
+tanker-alexandrie = { index = "https://gitlab.com/TankerHQ/rust-crate-index" }
+
+[http]
+timeout = 300

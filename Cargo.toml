@@ -1,10 +1,11 @@
 [package]
 name = "tankersdk"
-version = "0.1.0"
+version = "0.1.1-alpha1"
 edition = "2018"
 authors = ["Tanker Team <contact@tanker.io>"]
 license = "Apache-2.0"
-publish = false
+publish = ["tanker-alexandrie"]
+include = ["native", "src", "tests", "build.rs"]
 
 [dependencies]
 futures = "0.3"
