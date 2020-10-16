@@ -231,17 +231,7 @@ def deploy(args: argparse.Namespace) -> None:
     version = args.version
     tankerci.bump_files(version)
 
-    Path("release").makedirs_p()
-
-    files = ["build.rs", "Cargo.toml", "native", "src", "tests"]
-    tankerci.run(
-        "tar",
-        "--transform",
-        f"s@^@tanker-sdk-{version}/@",
-        "-czf",
-        f"release/tanker-sdk-{version}.tar.gz",
-        *files,
-    )
+    tankerci.run("cargo", "publish", "--allow-dirty")
 
 
 def main() -> None:
