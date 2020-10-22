@@ -210,6 +210,9 @@ def build_and_test(
     test: bool = True,
     tanker_ref: Optional[str] = None,
 ) -> None:
+    if os.environ.get("CI"):
+        tankerci.run("rustup", "update", "stable")
+        os.environ["RUSTFLAGS"] = "-D warnings"
     for profile in profiles:
         builder = Builder(
             src_path=Path.getcwd(), tanker_source=tanker_source, profile=profile
