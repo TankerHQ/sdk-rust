@@ -232,9 +232,10 @@ def deploy(args: argparse.Namespace) -> None:
         ui.fatal("Aborting deploy because of missing targets:", *missing_targets)
 
     version = args.version
+    registry = args.registry
     tankerci.bump_files(version)
 
-    tankerci.run("cargo", "publish", "--allow-dirty")
+    tankerci.run("cargo", "publish", "--allow-dirty", f"--registry={registry}")
 
 
 def main() -> None:
@@ -282,6 +283,7 @@ def main() -> None:
     download_artifacts_parser.add_argument("--job-name", required=True)
     deploy_parser = subparsers.add_parser("deploy")
     deploy_parser.add_argument("--version", required=True)
+    deploy_parser.add_argument("--registry", required=True)
     subparsers.add_parser("mirror")
 
     args = parser.parse_args()
