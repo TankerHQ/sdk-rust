@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /rust.yml
-  ref: 3c2982f66615f3e203589c6e8471c1a1d2de3723
+  ref: theo/cargo_registry
 
 check/native-from-sources/linux:
   extends:
@@ -113,7 +113,7 @@ deploy:
     - .tags/linux
     - .rules/deploy/rust
   script:
-    - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION
+    - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION --registry $SDK_RUST_CARGO_REGISTRY
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
