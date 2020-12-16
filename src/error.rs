@@ -34,6 +34,8 @@ pub enum ErrorCode {
     DeviceRevoked = 12,
     /// There was a conflict with a concurrent operation from another device/user. Please try again
     Conflict = 13,
+    /// A new version of the SDK is required to perform the requested action
+    UpgradeRequired = 14,
 
     #[num_enum(default)]
     UnknownError = u32::max_value(),
@@ -106,6 +108,7 @@ impl From<Error> for futures::io::Error {
             | ErrorCode::DecryptionFailed
             | ErrorCode::TooManyAttempts
             | ErrorCode::Conflict
+            | ErrorCode::UpgradeRequired
             | ErrorCode::UnknownError => ErrorKind::Other,
         };
         futures::io::Error::new(kind, e)
