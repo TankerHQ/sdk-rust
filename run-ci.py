@@ -2,10 +2,11 @@ from typing import List, Optional
 import os
 import argparse
 import json
+from pathlib import Path
+import shutil
 import sys
 
 import cli_ui as ui  # noqa
-from path import Path
 import tankerci
 from tankerci.conan import TankerSource
 import tankerci.conan
@@ -84,12 +85,12 @@ def bind_gen(*, header_source: Path, output_file: Path, include_path: Path) -> N
     tankerci.run(
         "bindgen",
         "--no-layout-tests",
-        header_source,
+        str(header_source),
         "-o",
-        output_file,
+        str(output_file),
         "--",
         "-I",
-        include_path,
+        str(include_path),
     )
 
 
@@ -118,21 +119,30 @@ class Builder:
 
         # copy includes
         package_include = package_path / "include"
-        package_include.rmtree_p()
-        package_include.makedirs()
+        if package_include.exists():
+            shutil.rmtree(package_include)
+        package_include.mkdir(parents=True)
         include_path = Path(depsConfig["tanker"].include_dirs[0])
-        (include_path / "ctanker").merge_tree(package_include / "ctanker")
-        (include_path / "ctanker.h").copy(package_include)
+        dest_include_path = package_include / "ctanker"
+        for header in include_path.glob("**/*"):
+            if header.is_dir():
+                continue
+            rel_dir = header.parent.relative_to(include_path)
+            header_dest_dir = dest_include_path / rel_dir
+            header_dest_dir.mkdir(parents=True, exist_ok=True)
+            ui.info_2(header, "->", header_dest_dir)
+            shutil.copy(header, header_dest_dir)
 
         # copy all .a in deplibs
         package_libs = package_path / "deplibs"
-        package_libs.makedirs_p()
+        package_libs.mkdir(parents=True, exist_ok=True)
         for lib_path in depsConfig.all_lib_paths():
-            Path(lib_path).copy(package_libs)
+            shutil.copy(lib_path, package_libs)
 
         native_path = self.src_path / "native" / self.target_triplet
-        native_path.rmtree_p()
-        native_path.makedirs_p()
+        if native_path.exists():
+            shutil.rmtree(native_path)
+        native_path.mkdir(parents=True)
         # merge all .a in deplibs into one big libtanker.a
         self._merge_all_libs(package_path, native_path)
         bind_gen(
@@ -142,18 +152,20 @@ class Builder:
         )
 
     def _merge_all_libs(self, package_path: Path, native_path: Path) -> None:
-        with package_path:
+        with tankerci.working_directory(package_path):
             env = os.environ.copy()
             if self._is_android_target():
                 android_bin_path = get_android_bin_path()
-                env["LD"] = android_bin_path / "ld.lld"
-                env["OBJCOPY"] = android_bin_path / "llvm-objcopy"
+                env["LD"] = str(android_bin_path / "ld.lld")
+                env["OBJCOPY"] = str(android_bin_path / "llvm-objcopy")
                 ui.info(f'Using {env["LD"]}')
                 ui.info(f'Using {env["OBJCOPY"]}')
 
             if self._is_ios_target():
                 env["ARMERGE_LDFLAGS"] = "-bitcode_bundle"
-            Path("libtanker.a").remove_p()
+            libtanker_a = Path("libtanker.a")
+            if libtanker_a.exists():
+                libtanker_a.unlink()
             # Apple prefixes symbols with '_'
             tankerci.run(
                 "armerge --keep-symbols '^_?tanker_.*' --output libtanker.a"
@@ -166,9 +178,9 @@ class Builder:
                 # HACK: Android forces debug symbols, we need to patch the
                 # toolchain to remove them. Until then, strip them here.
                 tankerci.run(
-                    llvm_strip, "--strip-debug", "--strip-unneeded", "libtanker.a"
+                    str(llvm_strip), "--strip-debug", "--strip-unneeded", "libtanker.a"
                 )
-            Path("libtanker.a").copy(native_path)
+            shutil.copy("libtanker.a", native_path)
 
     def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
         tanker_deployed_ref = tanker_ref
@@ -215,7 +227,7 @@ def build_and_test(
         os.environ["RUSTFLAGS"] = "-D warnings"
     for profile in profiles:
         builder = Builder(
-            src_path=Path.getcwd(), tanker_source=tanker_source, profile=profile
+            src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
         )
         builder.prepare(update, tanker_ref)
         # tankerci.run("cargo", "build")
@@ -224,7 +236,7 @@ def build_and_test(
 
 
 def deploy(args: argparse.Namespace) -> None:
-    compiled_targets = [path.basename() for path in Path("native").listdir()]
+    compiled_targets = [p.name for p in Path("native").iterdir() if p.is_dir()]
     missing_targets = [
         target for target in TARGET_LIST if target not in compiled_targets
     ]
@@ -306,9 +318,9 @@ def main() -> None:
     elif args.command == "reset-branch":
         fallback = os.environ["CI_COMMIT_REF_NAME"]
         ref = tankerci.git.find_ref(
-            Path.getcwd(), [f"origin/{args.branch}", f"origin/{fallback}"]
+            Path.cwd(), [f"origin/{args.branch}", f"origin/{fallback}"]
         )
-        tankerci.git.reset(Path.getcwd(), ref)
+        tankerci.git.reset(Path.cwd(), ref)
     elif args.command == "download-artifacts":
         tankerci.gitlab.download_artifacts(
             project_id=args.project_id,
