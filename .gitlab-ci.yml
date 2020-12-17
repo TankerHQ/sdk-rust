@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /rust.yml
-  ref: d00adef9b8824389752d37a9e4d25ebdcd906759
+  ref: 98ea16a090e6414744cd107c170505b715e92545
 
 check/native-from-sources/linux:
   extends:
