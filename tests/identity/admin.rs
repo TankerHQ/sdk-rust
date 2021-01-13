@@ -15,12 +15,18 @@ use tankersdk::Error;
 pub struct Admin {
     client: reqwest::Client,
     admin_url: String,
+    trustchain_url: String,
     api_url: String,
     id_token: String,
 }
 
 impl Admin {
-    pub async fn new(admin_url: String, id_token: String, api_url: String) -> Result<Self, Error> {
+    pub async fn new(
+        admin_url: String,
+        id_token: String,
+        api_url: String,
+        trustchain_url: String,
+    ) -> Result<Self, Error> {
         let headers = [
             (ACCEPT, "application/json"),
             (AUTHORIZATION, &format!("Bearer {}", id_token)),
@@ -36,6 +42,7 @@ impl Admin {
             client,
             admin_url,
             api_url,
+            trustchain_url,
             id_token,
         })
     }
@@ -63,7 +70,7 @@ impl Admin {
         let json_app = reply["app"].as_object().unwrap();
 
         Ok(App {
-            url: self.api_url.clone(),
+            url: self.trustchain_url.clone(),
             id: json_app["id"].as_str().unwrap().to_owned(),
             auth_token: json_app["auth_token"].as_str().unwrap().to_owned(),
             private_key: private_key_b64,
