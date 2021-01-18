@@ -47,6 +47,7 @@ impl TestApp {
             config.admin_url.clone(),
             config.id_token.clone(),
             config.api_url.clone(),
+            config.trustchain_url.clone(),
         )
         .await
         .unwrap();

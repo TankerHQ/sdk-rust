@@ -26,6 +26,7 @@ pub struct OIDCConfig {
 pub struct Config {
     pub id_token: String,
     pub api_url: String,
+    pub trustchain_url: String,
     pub admin_url: String,
     pub oidc_config: OIDCConfig,
 }
@@ -34,7 +35,8 @@ impl Config {
     pub fn new() -> Self {
         Self {
             id_token: safe_get_env("TANKER_ID_TOKEN"),
-            api_url: safe_get_env("TANKER_TRUSTCHAIND_URL"),
+            api_url: safe_get_env("TANKER_APPD_URL"),
+            trustchain_url: safe_get_env("TANKER_TRUSTCHAIND_URL"),
             admin_url: safe_get_env("TANKER_ADMIND_URL"),
             oidc_config: OIDCConfig::new(),
         }
