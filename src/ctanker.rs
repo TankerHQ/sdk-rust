@@ -90,7 +90,9 @@ pub unsafe fn set_log_handler(callback: LogHandlerCallback) {
 }
 
 pub async fn create(options: Options) -> Result<CTankerPtr, Error> {
-    let sdk_type = CString::new(RUST_SDK_TYPE).unwrap();
+    let sdk_type = options
+        .sdk_type
+        .unwrap_or_else(|| CString::new(RUST_SDK_TYPE).unwrap());
     let sdk_version = CString::new(RUST_SDK_VERSION).unwrap();
     let coptions = tanker_options {
         version: 2,
