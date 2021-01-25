@@ -275,6 +275,7 @@ impl Core {
     /// Revokes one of the user's devices.
     ///
     /// The Tanker status must be `Ready`.
+    #[deprecated(since = "2.8.0")]
     pub async fn revoke_device(&self, device_id: &str) -> Result<(), Error> {
         unsafe { ctanker::revoke_device(self.ctanker, device_id).await }
     }
