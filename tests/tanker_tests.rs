@@ -54,6 +54,7 @@ async fn self_revoke() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
 
+    #[allow(deprecated)]
     tanker.revoke_device(&tanker.device_id()?).await?;
     let err = tanker.encrypt(b"F", &Default::default()).await.unwrap_err();
     assert_eq!(err.code(), ErrorCode::DeviceRevoked);
