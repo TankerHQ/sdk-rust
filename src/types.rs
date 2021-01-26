@@ -11,6 +11,7 @@ pub struct Options {
     pub(crate) url: Option<CString>,
     pub(crate) app_id: CString,
     pub(crate) writable_path: CString,
+    pub(crate) sdk_type: Option<CString>,
 }
 
 impl Options {
@@ -23,11 +24,17 @@ impl Options {
             url: None,
             app_id: CString::new(app_id).unwrap(),
             writable_path: CString::new(writable_path).unwrap(),
+            sdk_type: None,
         }
     }
 
     pub fn with_url(mut self, url: String) -> Self {
         self.url = Some(CString::new(url).unwrap());
+        self
+    }
+
+    pub fn with_sdk_type(mut self, sdk_type: String) -> Self {
+        self.sdk_type = Some(CString::new(sdk_type).unwrap());
         self
     }
 }

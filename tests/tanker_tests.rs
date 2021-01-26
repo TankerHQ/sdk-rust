@@ -16,7 +16,8 @@ fn core_native_version() {
 #[tokio::test]
 async fn tanker_create() -> Result<(), Error> {
     let app = TestApp::get().await;
-    let opts = Options::new(app.id().to_owned(), ":memory:".to_string());
+    let opts = Options::new(app.id().to_owned(), ":memory:".to_string())
+        .with_sdk_type("sdk-rust-test".to_string());
     let core = Core::new(opts).await?;
     drop(core);
     Ok(())
@@ -24,7 +25,8 @@ async fn tanker_create() -> Result<(), Error> {
 
 #[tokio::test]
 async fn tanker_bad_create() {
-    let opts = Options::new("bad-app-id".to_string(), ":memory:".to_string());
+    let opts = Options::new("bad-app-id".to_string(), ":memory:".to_string())
+        .with_sdk_type("sdk-rust-test".to_string());
     let err = Core::new(opts)
         .await
         .expect_err("The app ID should not be accepted, it's not valid base64");
