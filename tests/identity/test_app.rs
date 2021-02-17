@@ -6,16 +6,10 @@ use config::{Config, OIDCConfig};
 use super::Admin;
 use super::App;
 use crate::identity::{create_identity, create_provisional_identity, get_public_identity};
-use double_checked_cell_async::DoubleCheckedCell;
 use futures::executor::block_on;
-use lazy_static::lazy_static;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification};
-
-lazy_static! {
-    static ref GLOBAL_APP: DoubleCheckedCell<TestApp> = DoubleCheckedCell::new();
-}
 
 pub struct TestApp {
     config: Config,
@@ -24,7 +18,7 @@ pub struct TestApp {
 }
 
 impl TestApp {
-    pub async fn get() -> &'static Self {
+    pub async fn get() -> Self {
         Core::set_log_handler(Box::new(|record| {
             if record.level >= LogRecordLevel::Warning {
                 println!(
@@ -33,7 +27,7 @@ impl TestApp {
                 )
             }
         }));
-        GLOBAL_APP.get_or_init(TestApp::new()).await
+        TestApp::new().await
     }
 
     pub fn make_options(&self) -> Options {
@@ -50,7 +44,6 @@ impl TestApp {
             config.api_url.clone(),
             config.trustchain_url.clone(),
         )
-        .await
         .unwrap();
         let app = admin.create_app("rust-test", true).await.unwrap();
         Self { config, admin, app }

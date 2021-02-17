@@ -4,7 +4,7 @@ use identity::TestApp;
 use std::iter;
 use tankersdk::*;
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn cannot_create_empty_group() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -20,7 +20,7 @@ async fn cannot_create_empty_group() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn create_valid_group() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -36,7 +36,7 @@ async fn create_valid_group() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn encrypt_and_share_with_external_group() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice_id = app.create_identity(None);
@@ -58,7 +58,7 @@ async fn encrypt_and_share_with_external_group() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn share_with_external_group() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice_id = app.create_identity(None);
@@ -83,7 +83,7 @@ async fn share_with_external_group() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn add_member_to_group() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice_id = app.create_identity(None);

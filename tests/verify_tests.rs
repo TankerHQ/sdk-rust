@@ -4,7 +4,7 @@ use identity::TestApp;
 use serde_json::{json, Value};
 use tankersdk::*;
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn validate_new_device_with_verif_key() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -23,7 +23,7 @@ async fn validate_new_device_with_verif_key() -> Result<(), Error> {
     tanker.stop().await
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn setup_and_use_passphrase() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -41,7 +41,7 @@ async fn setup_and_use_passphrase() -> Result<(), Error> {
     tanker.stop().await
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn unlock_with_updated_passphrase() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -61,7 +61,7 @@ async fn unlock_with_updated_passphrase() -> Result<(), Error> {
     tanker.stop().await
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn check_passphrase_is_setup() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -77,7 +77,7 @@ async fn check_passphrase_is_setup() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn check_email_verif_is_setup() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -97,7 +97,7 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn unlock_with_verif_code() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -123,7 +123,7 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
     tanker.stop().await
 }
 
-#[tokio::test]
+#[tokio::test(threaded_scheduler)]
 async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let app = TestApp::get().await;
     let oidc = app.get_oidc_config();

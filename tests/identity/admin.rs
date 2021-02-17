@@ -21,7 +21,7 @@ pub struct Admin {
 }
 
 impl Admin {
-    pub async fn new(
+    pub fn new(
         admin_url: String,
         id_token: String,
         api_url: String,
