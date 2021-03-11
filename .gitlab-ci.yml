@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /rust.yml
-  ref: 4b9ae23b9ee4d88488d645d4af71188c28c634e3
+  ref: 37bb68d38359db981eaec61aa6918075ff29d4e0
 
 check/native-from-sources/linux:
   extends:
@@ -9,7 +9,7 @@ check/native-from-sources/linux:
     - .tags/linux
     - .rules/native-from-sources
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile gcc8-release
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile linux-release
 
 check/native-from-sources/android:
   extends:
@@ -42,7 +42,7 @@ check/deployed-native/linux:
     - .rules/deployed-native/release-artifacts
     - .release-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile gcc8-release
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile linux-release
 
 check/deployed-native/android:
   extends:
@@ -78,7 +78,7 @@ check/downstream/linux:
     - .rules/check/downstream/linux
     - .before-script/download-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile gcc8-release
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile linux-release
 
 check/downstream/android:
   extends:
