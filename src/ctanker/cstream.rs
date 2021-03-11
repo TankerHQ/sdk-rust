@@ -25,6 +25,7 @@ use crate::ctanker::*;
 use crate::error::Error;
 
 use ::core::pin::Pin;
+use async_channel::{bounded, Receiver, Sender, TryRecvError};
 use futures::executor::block_on;
 use futures::future::{select, Either};
 use futures::io::{AsyncRead, AsyncReadExt};
@@ -34,7 +35,6 @@ use futures::FutureExt;
 use std::cmp::min;
 use std::future::Future;
 use std::sync::Mutex;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 #[derive(Debug, Clone)]
 struct ReadOperation {
@@ -63,7 +63,7 @@ struct TankerStream<UserStream: AsyncRead + Unpin> {
 
 impl<UserStream: AsyncRead + Unpin> TankerStream<UserStream> {
     fn new() -> Self {
-        let (sender, receiver) = channel(1);
+        let (sender, receiver) = bounded(1);
         TankerStream {
             user_stream: None,
             tanker_stream_handle: std::ptr::null_mut(),
@@ -175,18 +175,18 @@ impl<UserStream: AsyncRead + Unpin> AsyncRead for TankerStream<UserStream> {
             }
 
             // Take the next ReadOperation if there is one
-            match self.receiver.recv().now_or_never() {
-                Some(Some(read_operation)) => {
+            match self.receiver.try_recv() {
+                Ok(read_operation) => {
                     debug_assert!(
                         self.read_operation.is_none(),
                         "Tanker never asks for a ReadOperation if one is in progress"
                     );
                     self.read_operation = Some(read_operation);
                 }
-                Some(None) => {
+                Err(TryRecvError::Closed) => {
                     panic!("error reading channel: closed");
                 }
-                None => {} // Channel still open, but no message
+                Err(TryRecvError::Empty) => {} // Channel still open, but no message
             }
 
             // Process the ReadOperation if there is one in progress
