@@ -34,7 +34,6 @@ use futures::FutureExt;
 use std::cmp::min;
 use std::future::Future;
 use std::sync::Mutex;
-use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 #[derive(Debug, Clone)]
@@ -176,18 +175,18 @@ impl<UserStream: AsyncRead + Unpin> AsyncRead for TankerStream<UserStream> {
             }
 
             // Take the next ReadOperation if there is one
-            match self.receiver.try_recv() {
-                Ok(read_operation) => {
+            match self.receiver.recv().now_or_never() {
+                Some(Some(read_operation)) => {
                     debug_assert!(
                         self.read_operation.is_none(),
                         "Tanker never asks for a ReadOperation if one is in progress"
                     );
                     self.read_operation = Some(read_operation);
                 }
-                Err(TryRecvError::Empty) => {} // No work to do
-                Err(e) => {
-                    panic!("error reading channel: {}", e);
+                Some(None) => {
+                    panic!("error reading channel: closed");
                 }
+                None => {} // Channel still open, but no message
             }
 
             // Process the ReadOperation if there is one in progress
