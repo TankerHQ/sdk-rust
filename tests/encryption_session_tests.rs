@@ -4,7 +4,7 @@ use futures::AsyncReadExt;
 use identity::TestApp;
 use tankersdk::*;
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn open_close_enc_sess() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -16,7 +16,7 @@ async fn open_close_enc_sess() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn share_with_enc_sess() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -32,7 +32,7 @@ async fn share_with_enc_sess() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_stream_with_enc_sess() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -52,7 +52,7 @@ async fn encrypt_stream_with_enc_sess() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn resource_id_of_enc_sess_matches_ciphertext() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -67,7 +67,7 @@ async fn resource_id_of_enc_sess_matches_ciphertext() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn resource_id_of_different_enc_sess_are_different() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;

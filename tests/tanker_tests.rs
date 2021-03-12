@@ -13,7 +13,7 @@ fn core_native_version() {
     assert!(!Core::native_version().is_empty())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn tanker_create() -> Result<(), Error> {
     let app = TestApp::get().await;
     let opts = Options::new(app.id().to_owned(), ":memory:".to_string())
@@ -23,7 +23,7 @@ async fn tanker_create() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn tanker_bad_create() {
     let opts = Options::new("bad-app-id".to_string(), ":memory:".to_string())
         .with_sdk_type("sdk-rust-test".to_string());
@@ -33,7 +33,7 @@ async fn tanker_bad_create() {
     assert_eq!(err.code(), ErrorCode::InvalidArgument);
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn start_stop_session() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = Core::new(app.make_options()).await?;
@@ -49,7 +49,7 @@ async fn start_stop_session() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn self_revoke() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -62,7 +62,7 @@ async fn self_revoke() -> Result<(), Error> {
     tanker.stop().await
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn has_correct_device_list() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -75,7 +75,7 @@ async fn has_correct_device_list() -> Result<(), Error> {
     tanker.stop().await
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_and_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -89,7 +89,7 @@ async fn encrypt_and_decrypt() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn share_then_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -112,7 +112,7 @@ async fn share_then_decrypt() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_and_share_then_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -131,7 +131,7 @@ async fn encrypt_and_share_then_decrypt() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_no_share_with_self() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -155,7 +155,7 @@ async fn encrypt_no_share_with_self() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn share_with_provisional_user() -> Result<(), Error> {
     let message = b"Variable 'message' is never used";
     let app = TestApp::get().await;
@@ -190,7 +190,7 @@ async fn share_with_provisional_user() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn attach_provisional_with_single_verif() -> Result<(), Error> {
     let message = b"Variable 'message' is never used";
     let app = TestApp::get().await;
@@ -223,14 +223,14 @@ async fn attach_provisional_with_single_verif() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn prehash_password_empty() -> Result<(), Error> {
     let err = Core::prehash_password("").unwrap_err();
     assert_eq!(err.code(), ErrorCode::InvalidArgument);
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn prehash_password_test_vector_1() -> Result<(), Error> {
     let input = "super secretive password";
     let expected = "UYNRgDLSClFWKsJ7dl9uPJjhpIoEzadksv/Mf44gSHI=";
@@ -239,7 +239,7 @@ async fn prehash_password_test_vector_1() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn prehash_password_test_vector_2() -> Result<(), Error> {
     let input = "test éå 한국어 😃";
     let expected = "Pkn/pjub2uwkBDpt2HUieWOXP5xLn0Zlen16ID4C7jI=";

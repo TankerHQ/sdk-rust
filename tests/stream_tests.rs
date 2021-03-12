@@ -8,7 +8,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tankersdk::{Error, ErrorCode};
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_stream_and_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -26,7 +26,7 @@ async fn encrypt_stream_and_decrypt() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_and_decrypt_stream() -> Result<(), futures::io::Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -42,7 +42,7 @@ async fn encrypt_and_decrypt_stream() -> Result<(), futures::io::Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_stream_and_decrypt_stream() -> Result<(), futures::io::Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -84,7 +84,7 @@ impl AsyncRead for ErrorAfter {
     }
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_stream_with_error() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -104,7 +104,7 @@ async fn encrypt_stream_with_error() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn decrypt_stream_with_early_error() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
@@ -123,7 +123,7 @@ async fn decrypt_stream_with_early_error() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn decrypt_stream_with_tanker_error() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
