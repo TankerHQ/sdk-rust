@@ -9,7 +9,7 @@ use crate::identity::{create_identity, create_provisional_identity, get_public_i
 use futures::executor::block_on;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification};
+use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification, VerificationOptions};
 
 pub struct TestApp {
     config: Config,
@@ -93,7 +93,9 @@ impl TestApp {
 
         let key = tanker.generate_verification_key().await?;
         let verif = Verification::VerificationKey(key);
-        tanker.register_identity(&verif).await?;
+        tanker
+            .register_identity(&verif, &VerificationOptions::new())
+            .await?;
         assert_eq!(tanker.status(), Status::Ready);
 
         Ok(tanker)

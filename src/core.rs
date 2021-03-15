@@ -84,9 +84,16 @@ impl Core {
     ///
     /// # Arguments
     /// * `verification` - The verification to use for identity registration
-    pub async fn register_identity(&self, verification: &Verification) -> Result<(), Error> {
+    pub async fn register_identity(
+        &self,
+        verification: &Verification,
+        options: &VerificationOptions,
+    ) -> Result<Option<String>, Error> {
         let verif_wrapper = verification.to_cverification_wrapper();
-        unsafe { ctanker::register_identity(self.ctanker, verif_wrapper.as_cverification()).await }
+        unsafe {
+            ctanker::register_identity(self.ctanker, verif_wrapper.as_cverification(), options)
+                .await
+        }
     }
 
     /// Verifies the user's identity with which [start()](Self::start) has been called, and starts the session.
@@ -95,9 +102,15 @@ impl Core {
     ///
     /// # Arguments
     /// * `verification` - The verification to use
-    pub async fn verify_identity(&self, verification: &Verification) -> Result<(), Error> {
+    pub async fn verify_identity(
+        &self,
+        verification: &Verification,
+        options: &VerificationOptions,
+    ) -> Result<Option<String>, Error> {
         let verif_wrapper = verification.to_cverification_wrapper();
-        unsafe { ctanker::verify_identity(self.ctanker, verif_wrapper.as_cverification()).await }
+        unsafe {
+            ctanker::verify_identity(self.ctanker, verif_wrapper.as_cverification(), options).await
+        }
     }
 
     /// Attaches a provisional identity to the user.
@@ -129,10 +142,19 @@ impl Core {
     ///
     /// # Arguments
     /// * `verification` - The verification to set
-    pub async fn set_verification_method(&self, verification: &Verification) -> Result<(), Error> {
+    pub async fn set_verification_method(
+        &self,
+        verification: &Verification,
+        options: &VerificationOptions,
+    ) -> Result<Option<String>, Error> {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
-            ctanker::set_verification_method(self.ctanker, verif_wrapper.as_cverification()).await
+            ctanker::set_verification_method(
+                self.ctanker,
+                verif_wrapper.as_cverification(),
+                options,
+            )
+            .await
         }
     }
 

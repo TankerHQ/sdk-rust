@@ -1,8 +1,10 @@
 mod cfuture;
+
 pub use cfuture::*;
 use std::marker::PhantomData;
 
 mod cstream;
+
 pub use cstream::*;
 
 pub use self::bindings::tanker_future;
@@ -18,12 +20,13 @@ pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
 
 use crate::{
     AttachResult, Device, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options,
-    SharingOptions, Status, VerificationMethod,
+    SharingOptions, Status, VerificationMethod, VerificationOptions,
 };
 use lazy_static::lazy_static;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::os::raw::c_char;
+use std::ptr::NonNull;
 use std::sync::{Mutex, Once};
 
 static RUST_SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -152,17 +155,47 @@ pub async unsafe fn generate_verification_key(ctanker: CTankerPtr) -> Result<Str
 pub async unsafe fn register_identity(
     ctanker: CTankerPtr,
     verification: *const CVerification,
-) -> Result<(), Error> {
-    let fut = unsafe { CFuture::<c_void>::new(tanker_register_identity(ctanker, verification)) };
-    fut.await.map(|_| ())
+    options: &VerificationOptions,
+) -> Result<Option<String>, Error> {
+    let c_options = tanker_verification_options {
+        version: 1,
+        with_token: options.with_token,
+    };
+    let fut = unsafe {
+        CFuture::<c_void>::new(tanker_register_identity(ctanker, verification, &c_options))
+    };
+    let token_str_ptr = fut.await? as *mut i8;
+    Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
+        let str = CStr::from_ptr(str_ptr.as_ptr())
+            .to_str()
+            .unwrap()
+            .to_owned();
+        free_buffer(token_str_ptr as *mut c_void);
+        str
+    }))
 }
 
 pub async unsafe fn verify_identity(
     ctanker: CTankerPtr,
     verification: *const CVerification,
-) -> Result<(), Error> {
-    let fut = unsafe { CFuture::<c_void>::new(tanker_verify_identity(ctanker, verification)) };
-    fut.await.map(|_| ())
+    options: &VerificationOptions,
+) -> Result<Option<String>, Error> {
+    let c_options = tanker_verification_options {
+        version: 1,
+        with_token: options.with_token,
+    };
+    let fut = unsafe {
+        CFuture::<c_void>::new(tanker_verify_identity(ctanker, verification, &c_options))
+    };
+    let token_str_ptr = fut.await? as *mut i8;
+    Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
+        let str = CStr::from_ptr(str_ptr.as_ptr())
+            .to_str()
+            .unwrap()
+            .to_owned();
+        free_buffer(token_str_ptr as *mut c_void);
+        str
+    }))
 }
 
 pub async unsafe fn verify_provisional_identity(
@@ -176,10 +209,28 @@ pub async unsafe fn verify_provisional_identity(
 pub async unsafe fn set_verification_method(
     ctanker: CTankerPtr,
     verification: *const CVerification,
-) -> Result<(), Error> {
-    let fut =
-        unsafe { CFuture::<c_void>::new(tanker_set_verification_method(ctanker, verification)) };
-    fut.await.map(|_| ())
+    options: &VerificationOptions,
+) -> Result<Option<String>, Error> {
+    let c_options = tanker_verification_options {
+        version: 1,
+        with_token: options.with_token,
+    };
+    let fut = unsafe {
+        CFuture::<c_void>::new(tanker_set_verification_method(
+            ctanker,
+            verification,
+            &c_options,
+        ))
+    };
+    let token_str_ptr = fut.await? as *mut i8;
+    Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
+        let str = CStr::from_ptr(str_ptr.as_ptr())
+            .to_str()
+            .unwrap()
+            .to_owned();
+        free_buffer(token_str_ptr as *mut c_void);
+        str
+    }))
 }
 
 pub async unsafe fn get_verification_methods(
