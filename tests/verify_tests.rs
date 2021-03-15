@@ -12,13 +12,17 @@ async fn validate_new_device_with_verif_key() -> Result<(), Error> {
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityRegistrationNeeded);
     let key = Verification::VerificationKey(tanker.generate_verification_key().await?);
-    tanker.register_identity(&key).await?;
+    tanker
+        .register_identity(&key, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&key).await?;
+    tanker
+        .verify_identity(&key, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -30,13 +34,17 @@ async fn setup_and_use_passphrase() -> Result<(), Error> {
     let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityRegistrationNeeded);
-    tanker.register_identity(&pass).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&pass).await?;
+    tanker
+        .verify_identity(&pass, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -48,15 +56,18 @@ async fn unlock_with_updated_passphrase() -> Result<(), Error> {
     let first_pass = Verification::Passphrase("2564ms".into());
     let second_pass = Verification::Passphrase("light forward".into());
 
+    let verif_options = &VerificationOptions::new();
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&id).await?;
-    tanker.register_identity(&first_pass).await?;
-    tanker.set_verification_method(&second_pass).await?;
+    tanker.register_identity(&first_pass, verif_options).await?;
+    tanker
+        .set_verification_method(&second_pass, verif_options)
+        .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&second_pass).await?;
+    tanker.verify_identity(&second_pass, verif_options).await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -69,7 +80,9 @@ async fn check_passphrase_is_setup() -> Result<(), Error> {
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&id).await?;
-    tanker.register_identity(&pass).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
     let methods = tanker.get_verification_methods().await?;
     tanker.stop().await?;
 
@@ -89,7 +102,9 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&id).await?;
-    tanker.register_identity(&verif).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
     let methods = tanker.get_verification_methods().await?;
     tanker.stop().await?;
 
@@ -109,7 +124,9 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
         email: email.to_owned(),
         verification_code: app.get_verification_code(&email).await?,
     };
-    tanker.register_identity(&verif).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
@@ -118,7 +135,9 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
         email: email.to_owned(),
         verification_code: app.get_verification_code(&email).await?,
     };
-    tanker.verify_identity(&verif).await?;
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -150,13 +169,17 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
     let verif = Verification::OIDCIDToken(oidc_token.to_owned());
-    tanker.register_identity(&verif).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
     assert_eq!(tanker.status(), Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&verif).await?;
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await?;
     Ok(())

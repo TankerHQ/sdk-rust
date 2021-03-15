@@ -41,7 +41,9 @@ async fn start_stop_session() -> Result<(), Error> {
     assert_eq!(status, Status::IdentityRegistrationNeeded);
 
     let passphrase = Verification::Passphrase("pass".into());
-    tanker.register_identity(&passphrase).await?;
+    tanker
+        .register_identity(&passphrase, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
 
     tanker.stop().await?;
@@ -210,7 +212,8 @@ async fn attach_provisional_with_single_verif() -> Result<(), Error> {
         email: bob_email.clone(),
         verification_code: app.get_verification_code(&bob_email).await?,
     };
-    bob.register_identity(&verif).await?;
+    bob.register_identity(&verif, &VerificationOptions::new())
+        .await?;
 
     let attach_result = bob.attach_provisional_identity(&bob_provisional).await?;
     assert_eq!(attach_result.status, Status::Ready);

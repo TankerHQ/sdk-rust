@@ -18,6 +18,9 @@ pub use types::*;
 mod sharing_options;
 pub use sharing_options::{EncryptionOptions, SharingOptions};
 
+mod verification_options;
+pub use verification_options::VerificationOptions;
+
 mod verification_methods;
 pub use verification_methods::*;
 
