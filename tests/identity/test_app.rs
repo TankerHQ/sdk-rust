@@ -53,6 +53,18 @@ impl TestApp {
         &self.app.id
     }
 
+    pub fn url(&self) -> &str {
+        &self.config.api_url
+    }
+
+    pub fn trustchaind_url(&self) -> &str {
+        &self.config.trustchain_url
+    }
+
+    pub fn auth_token(&self) -> &str {
+        &self.app.auth_token
+    }
+
     pub async fn get_verification_code(&self, email: &str) -> Result<String, Error> {
         self.app.get_verification_code(email).await
     }
@@ -61,9 +73,15 @@ impl TestApp {
         &self,
         oidc_client_id: Option<&str>,
         oidc_provider: Option<&str>,
+        with_session_token: Option<bool>,
     ) -> Result<(), Error> {
         self.admin
-            .app_update(&self.app.id, oidc_client_id, oidc_provider)
+            .app_update(
+                &self.app.id,
+                oidc_client_id,
+                oidc_provider,
+                with_session_token,
+            )
             .await
     }
 
