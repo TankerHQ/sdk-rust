@@ -2,7 +2,7 @@
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct VerificationOptions {
-    pub(crate) with_token: bool,
+    pub(crate) with_session_token: bool,
 }
 
 impl VerificationOptions {
@@ -11,14 +11,16 @@ impl VerificationOptions {
     }
 
     /// Requests to create a Session Token on verification
-    pub fn with_token(mut self) -> Self {
-        self.with_token = true;
+    pub fn with_session_token(mut self) -> Self {
+        self.with_session_token = true;
         self
     }
 }
 
 impl Default for VerificationOptions {
     fn default() -> Self {
-        Self { with_token: false }
+        Self {
+            with_session_token: false,
+        }
     }
 }

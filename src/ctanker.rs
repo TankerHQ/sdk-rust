@@ -159,7 +159,7 @@ pub async unsafe fn register_identity(
 ) -> Result<Option<String>, Error> {
     let c_options = tanker_verification_options {
         version: 1,
-        with_token: options.with_token,
+        with_session_token: options.with_session_token,
     };
     let fut = unsafe {
         CFuture::<c_void>::new(tanker_register_identity(ctanker, verification, &c_options))
@@ -182,7 +182,7 @@ pub async unsafe fn verify_identity(
 ) -> Result<Option<String>, Error> {
     let c_options = tanker_verification_options {
         version: 1,
-        with_token: options.with_token,
+        with_session_token: options.with_session_token,
     };
     let fut = unsafe {
         CFuture::<c_void>::new(tanker_verify_identity(ctanker, verification, &c_options))
@@ -213,7 +213,7 @@ pub async unsafe fn set_verification_method(
 ) -> Result<Option<String>, Error> {
     let c_options = tanker_verification_options {
         version: 1,
-        with_token: options.with_token,
+        with_session_token: options.with_session_token,
     };
     let fut = unsafe {
         CFuture::<c_void>::new(tanker_set_verification_method(
