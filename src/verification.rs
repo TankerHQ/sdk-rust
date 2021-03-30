@@ -9,6 +9,7 @@ enum Type {
     Email = 1,
     Passphrase = 2,
     VerificationKey = 3,
+    #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken = 4,
 }
 
@@ -97,6 +98,7 @@ pub enum Verification {
     },
     Passphrase(String),
     VerificationKey(String),
+    #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken(String),
 }
 

@@ -1,7 +1,7 @@
 #![allow(dead_code)] // This module is compiled per-test. Not all tests will use all functions!
 
 mod config;
-use config::{Config, OIDCConfig};
+use config::{Config, OidcConfig};
 
 use super::Admin;
 use super::App;
@@ -119,7 +119,7 @@ impl TestApp {
         Ok(tanker)
     }
 
-    pub fn get_oidc_config(&self) -> &OIDCConfig {
+    pub fn get_oidc_config(&self) -> &OidcConfig {
         &self.config.oidc_config
     }
 }
