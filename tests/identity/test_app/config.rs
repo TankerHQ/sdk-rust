@@ -9,17 +9,17 @@ fn safe_get_env(env_var: &str) -> String {
 }
 
 #[derive(Debug, Clone)]
-pub struct OIDCUser {
+pub struct OidcUser {
     pub email: String,
     pub refresh_token: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct OIDCConfig {
+pub struct OidcConfig {
     pub client_id: String,
     pub client_secret: String,
     pub provider: String,
-    pub users: HashMap<String, OIDCUser>,
+    pub users: HashMap<String, OidcUser>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ pub struct Config {
     pub api_url: String,
     pub trustchain_url: String,
     pub admin_url: String,
-    pub oidc_config: OIDCConfig,
+    pub oidc_config: OidcConfig,
 }
 
 impl Config {
@@ -38,12 +38,12 @@ impl Config {
             api_url: safe_get_env("TANKER_APPD_URL"),
             trustchain_url: safe_get_env("TANKER_TRUSTCHAIND_URL"),
             admin_url: safe_get_env("TANKER_ADMIND_URL"),
-            oidc_config: OIDCConfig::new(),
+            oidc_config: OidcConfig::new(),
         }
     }
 }
 
-impl OIDCConfig {
+impl OidcConfig {
     pub fn new() -> Self {
         Self {
             client_id: safe_get_env("TANKER_OIDC_CLIENT_ID"),
@@ -52,14 +52,14 @@ impl OIDCConfig {
             users: vec![
                 (
                     "martine".into(),
-                    OIDCUser {
+                    OidcUser {
                         email: safe_get_env("TANKER_OIDC_MARTINE_EMAIL"),
                         refresh_token: safe_get_env("TANKER_OIDC_MARTINE_REFRESH_TOKEN"),
                     },
                 ),
                 (
                     "kevin".into(),
-                    OIDCUser {
+                    OidcUser {
                         email: safe_get_env("TANKER_OIDC_KEVIN_EMAIL"),
                         refresh_token: safe_get_env("TANKER_OIDC_KEVIN_REFRESH_TOKEN"),
                     },
