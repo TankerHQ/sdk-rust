@@ -14,6 +14,7 @@ pub enum VerificationMethod {
     Email(String),
     Passphrase,
     VerificationKey,
+    #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken,
 }
 
@@ -24,6 +25,7 @@ enum CMethodType {
     Email = 1,
     Passphrase = 2,
     VerificationKey = 3,
+    #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken = 4,
 
     #[num_enum(default)]
