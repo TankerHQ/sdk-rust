@@ -12,13 +12,17 @@ async fn validate_new_device_with_verif_key() -> Result<(), Error> {
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityRegistrationNeeded);
     let key = Verification::VerificationKey(tanker.generate_verification_key().await?);
-    tanker.register_identity(&key).await?;
+    tanker
+        .register_identity(&key, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&key).await?;
+    tanker
+        .verify_identity(&key, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -30,13 +34,17 @@ async fn setup_and_use_passphrase() -> Result<(), Error> {
     let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityRegistrationNeeded);
-    tanker.register_identity(&pass).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&pass).await?;
+    tanker
+        .verify_identity(&pass, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -48,15 +56,18 @@ async fn unlock_with_updated_passphrase() -> Result<(), Error> {
     let first_pass = Verification::Passphrase("2564ms".into());
     let second_pass = Verification::Passphrase("light forward".into());
 
+    let verif_options = &VerificationOptions::new();
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&id).await?;
-    tanker.register_identity(&first_pass).await?;
-    tanker.set_verification_method(&second_pass).await?;
+    tanker.register_identity(&first_pass, verif_options).await?;
+    tanker
+        .set_verification_method(&second_pass, verif_options)
+        .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&second_pass).await?;
+    tanker.verify_identity(&second_pass, verif_options).await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -69,7 +80,9 @@ async fn check_passphrase_is_setup() -> Result<(), Error> {
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&id).await?;
-    tanker.register_identity(&pass).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
     let methods = tanker.get_verification_methods().await?;
     tanker.stop().await?;
 
@@ -89,7 +102,9 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&id).await?;
-    tanker.register_identity(&verif).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
     let methods = tanker.get_verification_methods().await?;
     tanker.stop().await?;
 
@@ -109,7 +124,9 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
         email: email.to_owned(),
         verification_code: app.get_verification_code(&email).await?,
     };
-    tanker.register_identity(&verif).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
@@ -118,7 +135,9 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
         email: email.to_owned(),
         verification_code: app.get_verification_code(&email).await?,
     };
-    tanker.verify_identity(&verif).await?;
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
 }
@@ -130,7 +149,7 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let martine_config = &oidc.users["martine"];
     let martine_identity = app.create_identity(Some(martine_config.email.clone()));
 
-    app.app_update(Some(&oidc.client_id), Some(&oidc.provider))
+    app.app_update(Some(&oidc.client_id), Some(&oidc.provider), None)
         .await?;
 
     let client = reqwest::Client::new();
@@ -150,14 +169,135 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
     let verif = Verification::OIDCIDToken(oidc_token.to_owned());
-    tanker.register_identity(&verif).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
     assert_eq!(tanker.status(), Status::IdentityVerificationNeeded);
-    tanker.verify_identity(&verif).await?;
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn get_session_token_with_register_identity() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, Some(true)).await?;
+
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("The Cost of Legacy".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(&id).await?;
+    let token = tanker
+        .register_identity(&pass, &VerificationOptions::new().with_session_token())
+        .await?;
+    assert!(token.is_some());
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn get_session_token_with_verify_identity() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, Some(true)).await?;
+
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("Merge remote-tracking branch 'rust/rust-next'".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(&id).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+
+    let token = tanker
+        .verify_identity(&pass, &VerificationOptions::new().with_session_token())
+        .await?;
+    assert!(token.is_some());
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn get_session_token_with_set_verififcation_method() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, Some(true)).await?;
+
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("Phobos".into());
+    let pass2 = Verification::Passphrase("Deimos".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(&id).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+
+    let token = tanker
+        .set_verification_method(&pass2, &VerificationOptions::new().with_session_token())
+        .await?;
+    assert!(token.is_some());
+    tanker.stop().await?;
+    Ok(())
+}
+
+async fn check_session_token_with_server(
+    app: &TestApp,
+    public_identity: &str,
+    session_token: &str,
+    allowed_method: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let url = format!("{}/verification/session-token", app.trustchaind_url(),);
+
+    let reply: Value = reqwest::Client::new()
+        .post(url)
+        .json(&json!({
+            "app_id": app.id(),
+            "auth_token": app.auth_token(),
+            "public_identity": public_identity,
+            "session_token": session_token,
+            "allowed_methods": [{
+                "type": allowed_method
+            }]
+        }))
+        .send()
+        .await?
+        .json()
+        .await?;
+    Ok(reply["verification_method"].as_str().unwrap().to_owned())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn check_session_token_is_valid() -> Result<(), Box<dyn std::error::Error>> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, Some(true)).await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    let identity = &app.create_identity(None);
+    tanker.start(identity).await?;
+    let token = tanker
+        .register_identity(
+            &Verification::Passphrase("Less than three".into()),
+            &VerificationOptions::new().with_session_token(),
+        )
+        .await?
+        .unwrap();
+
+    let expected_method = "passphrase";
+    let actual_method_used = check_session_token_with_server(
+        &app,
+        &app.get_public_identity(identity),
+        &token,
+        expected_method,
+    )
+    .await?;
+    assert_eq!(expected_method, actual_method_used);
     Ok(())
 }

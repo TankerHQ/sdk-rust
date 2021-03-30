@@ -9,7 +9,7 @@ use crate::identity::{create_identity, create_provisional_identity, get_public_i
 use futures::executor::block_on;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification};
+use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification, VerificationOptions};
 
 pub struct TestApp {
     config: Config,
@@ -53,6 +53,18 @@ impl TestApp {
         &self.app.id
     }
 
+    pub fn url(&self) -> &str {
+        &self.config.api_url
+    }
+
+    pub fn trustchaind_url(&self) -> &str {
+        &self.config.trustchain_url
+    }
+
+    pub fn auth_token(&self) -> &str {
+        &self.app.auth_token
+    }
+
     pub async fn get_verification_code(&self, email: &str) -> Result<String, Error> {
         self.app.get_verification_code(email).await
     }
@@ -61,9 +73,15 @@ impl TestApp {
         &self,
         oidc_client_id: Option<&str>,
         oidc_provider: Option<&str>,
+        with_session_token: Option<bool>,
     ) -> Result<(), Error> {
         self.admin
-            .app_update(&self.app.id, oidc_client_id, oidc_provider)
+            .app_update(
+                &self.app.id,
+                oidc_client_id,
+                oidc_provider,
+                with_session_token,
+            )
             .await
     }
 
@@ -93,7 +111,9 @@ impl TestApp {
 
         let key = tanker.generate_verification_key().await?;
         let verif = Verification::VerificationKey(key);
-        tanker.register_identity(&verif).await?;
+        tanker
+            .register_identity(&verif, &VerificationOptions::new())
+            .await?;
         assert_eq!(tanker.status(), Status::Ready);
 
         Ok(tanker)
