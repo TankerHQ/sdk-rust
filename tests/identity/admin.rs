@@ -47,17 +47,37 @@ impl Admin {
         })
     }
 
+    pub async fn get_environments(&self) -> Result<Vec<String>, Error> {
+        let reply =
+            admin_rest_request(self.client.get(format!("{}/environments", self.admin_url))).await?;
+        let environments_ids = reply["environments"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["id"].as_str().unwrap().to_owned())
+            .collect::<Vec<_>>();
+
+        Ok(environments_ids)
+    }
+
     pub async fn create_app(&self, name: &str, is_test: bool) -> Result<App, Error> {
+        let envs = self.get_environments().await?;
+        assert!(envs.len() > 0, "found 0 environments");
+
         let sign_keypair = Keypair::generate(&mut OsRng {});
         let private_key_b64 = base64::encode(sign_keypair.to_bytes().as_ref());
 
         let root_block = serialized_root_block(&sign_keypair);
         let serialized_block = base64::encode(&root_block);
 
-        let mut json = [("name", name), ("root_block", &serialized_block)]
-            .iter()
-            .map(|(k, v)| (k.to_string(), Value::from(*v)))
-            .collect::<serde_json::Map<_, _>>();
+        let mut json = [
+            ("name", name),
+            ("root_block", &serialized_block),
+            ("environment_id", &envs[0]),
+        ]
+        .iter()
+        .map(|(k, v)| (k.to_string(), Value::from(*v)))
+        .collect::<serde_json::Map<_, _>>();
         if is_test {
             json.insert(
                 "private_signature_key".to_owned(),
