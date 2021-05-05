@@ -62,7 +62,7 @@ impl Admin {
 
     pub async fn create_app(&self, name: &str, is_test: bool) -> Result<App, Error> {
         let envs = self.get_environments().await?;
-        assert!(envs.len() > 0, "found 0 environments");
+        assert!(!envs.is_empty(), "found 0 environments");
 
         let sign_keypair = Keypair::generate(&mut OsRng {});
         let private_key_b64 = base64::encode(sign_keypair.to_bytes().as_ref());
