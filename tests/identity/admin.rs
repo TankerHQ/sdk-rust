@@ -1,7 +1,9 @@
 mod rest;
+
 pub use rest::admin_rest_request;
 
 mod block;
+
 use block::serialized_root_block;
 
 use super::App;
@@ -41,8 +43,8 @@ impl Admin {
         Ok(Self {
             client,
             admin_url,
-            api_url,
             trustchain_url,
+            api_url,
             id_token,
         })
     }
