@@ -193,6 +193,42 @@ async fn share_with_provisional_user() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn throws_if_identity_is_already_attached() -> Result<(), Error> {
+    let app = TestApp::get().await;
+
+    let bob_email = "bob@tanker.io".to_owned();
+    let bob_provisional = app.create_provisional_identity(&bob_email);
+
+    let bob = app.start_anonymous(&app.create_identity(None)).await?;
+    let attach_result = bob.attach_provisional_identity(&bob_provisional).await?;
+    assert_eq!(attach_result.status, Status::IdentityVerificationNeeded);
+    assert_eq!(
+        attach_result.verification_method,
+        Some(VerificationMethod::Email(bob_email.clone()))
+    );
+
+    let verif = Verification::Email {
+        email: bob_email.clone(),
+        verification_code: app.get_verification_code(&bob_email).await?,
+    };
+    bob.verify_provisional_identity(&verif).await?;
+
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+    let attach_result = alice.attach_provisional_identity(&bob_provisional).await?;
+    assert_eq!(attach_result.status, Status::IdentityVerificationNeeded);
+    let verif = Verification::Email {
+        email: bob_email.clone(),
+        verification_code: app.get_verification_code(&bob_email).await?,
+    };
+    let err = alice.verify_provisional_identity(&verif).await.unwrap_err();
+    assert_eq!(err.code(), ErrorCode::IdentityAlreadyAttached);
+
+    bob.stop().await?;
+    alice.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn attach_provisional_with_single_verif() -> Result<(), Error> {
     let message = b"Variable 'message' is never used";
     let app = TestApp::get().await;
