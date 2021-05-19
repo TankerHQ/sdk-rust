@@ -36,6 +36,8 @@ pub enum ErrorCode {
     Conflict = 13,
     /// A new version of the SDK is required to perform the requested action
     UpgradeRequired = 14,
+    /// A provisional identity has already been attached
+    IdentityAlreadyAttached = 15,
 
     #[num_enum(default)]
     UnknownError = u32::max_value(),
@@ -109,6 +111,7 @@ impl From<Error> for futures::io::Error {
             | ErrorCode::TooManyAttempts
             | ErrorCode::Conflict
             | ErrorCode::UpgradeRequired
+            | ErrorCode::IdentityAlreadyAttached
             | ErrorCode::UnknownError => ErrorKind::Other,
         };
         futures::io::Error::new(kind, e)
