@@ -450,8 +450,10 @@ pub async unsafe fn update_group_members(
     ctanker: CTankerPtr,
     group_id: &CStr,
     users_to_add: &[CString],
+    users_to_remove: &[CString],
 ) -> Result<(), Error> {
     let users_to_add = users_to_add.iter().map(|u| u.as_ptr()).collect::<Vec<_>>();
+    let users_to_remove = users_to_remove.iter().map(|u| u.as_ptr()).collect::<Vec<_>>();
 
     let fut = unsafe {
         CFuture::<c_void>::new(tanker_update_group_members(
@@ -459,6 +461,8 @@ pub async unsafe fn update_group_members(
             group_id.as_ptr(),
             users_to_add.as_ptr(),
             users_to_add.len() as u64,
+            users_to_remove.as_ptr(),
+            users_to_remove.len() as u64,
         ))
     };
     fut.await.map(|_| ())
