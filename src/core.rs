@@ -268,7 +268,7 @@ impl Core {
         unsafe { ctanker::create_group(self.ctanker, &members).await }
     }
 
-    /// Add members to an existing group.
+    /// Add or remove members from an existing group.
     ///
     /// The Tanker status must be `Ready`.
     ///
@@ -277,21 +277,31 @@ impl Core {
     /// # Arguments
     /// * `group_id` - Group ID to modify
     /// * `users_to_add` - Public identities of users to add to the group
-    pub async fn update_group_members<S, Iter>(
+    /// * `users_to_remove` - Public identities of users to remove from the group
+    pub async fn update_group_members<S, AddIter, RemoveIter>(
         &self,
         group_id: &str,
-        users_to_add: Iter,
+        users_to_add: AddIter,
+        users_to_remove: RemoveIter,
     ) -> Result<(), Error>
     where
         S: AsRef<str>,
-        Iter: IntoIterator<Item = S>,
+        AddIter: IntoIterator<Item = S>,
+        RemoveIter: IntoIterator<Item = S>,
     {
         let group_id = CString::new(group_id).unwrap();
         let users_to_add: Vec<_> = users_to_add
             .into_iter()
             .map(|r| CString::new(r.as_ref()).unwrap())
             .collect();
-        unsafe { ctanker::update_group_members(self.ctanker, &group_id, &users_to_add).await }
+        let users_to_remove: Vec<_> = users_to_remove
+            .into_iter()
+            .map(|r| CString::new(r.as_ref()).unwrap())
+            .collect();
+        unsafe {
+            ctanker::update_group_members(self.ctanker, &group_id, &users_to_add, &users_to_remove)
+                .await
+        }
     }
 
     /// Revokes one of the user's devices.
