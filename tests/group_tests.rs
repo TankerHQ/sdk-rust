@@ -102,7 +102,9 @@ async fn add_member_to_group() -> Result<(), Error> {
     let options = SharingOptions::new().share_with_groups(&[&group_id]);
     alice.share(&[resource_id], &options).await?;
 
-    alice.update_group_members(&group_id, &[bob_pub_id], &[]).await?;
+    alice
+        .update_group_members(&group_id, &[bob_pub_id], &[])
+        .await?;
 
     assert_eq!(bob.decrypt(&encrypted).await?, msg);
 
@@ -129,7 +131,9 @@ async fn remove_member_from_group() -> Result<(), Error> {
 
     assert_eq!(bob.decrypt(&encrypted).await?, msg);
 
-    alice.update_group_members(&group_id, &[], &[bob_pub_id]).await?;
+    alice
+        .update_group_members(&group_id, &[], &[bob_pub_id])
+        .await?;
 
     let encrypted = alice.encrypt(msg, &options).await?;
 

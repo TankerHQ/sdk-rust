@@ -297,7 +297,10 @@ impl Core {
             .into_iter()
             .map(|r| CString::new(r.as_ref()).unwrap())
             .collect();
-        unsafe { ctanker::update_group_members(self.ctanker, &group_id, &users_to_add, &users_to_remove).await }
+        unsafe {
+            ctanker::update_group_members(self.ctanker, &group_id, &users_to_add, &users_to_remove)
+                .await
+        }
     }
 
     /// Revokes one of the user's devices.
