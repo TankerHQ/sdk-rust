@@ -207,6 +207,8 @@ class Builder:
             "--",
             "--deny",
             "warnings",
+            "--allow",
+            "unknown-lints",
             cwd=self.src_path,
         )
         tankerci.run(
