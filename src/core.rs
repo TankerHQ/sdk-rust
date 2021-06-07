@@ -277,6 +277,7 @@ impl Core {
     /// # Arguments
     /// * `group_id` - Group ID to modify
     /// * `users_to_add` - Public identities of users to add to the group
+    /// * `users_to_remove` - Public identities of users to remove from the group
     pub async fn update_group_members<S, AddIter, RemoveIter>(
         &self,
         group_id: &str,
