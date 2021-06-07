@@ -65,8 +65,12 @@ impl TestApp {
         &self.app.auth_token
     }
 
-    pub async fn get_verification_code(&self, email: &str) -> Result<String, Error> {
-        self.app.get_verification_code(email).await
+    pub async fn get_email_verification_code(&self, email: &str) -> Result<String, Error> {
+        self.app.get_email_verification_code(email).await
+    }
+
+    pub async fn get_sms_verification_code(&self, phone_number: &str) -> Result<String, Error> {
+        self.app.get_sms_verification_code(phone_number).await
     }
 
     pub async fn app_update(

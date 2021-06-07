@@ -12,13 +12,29 @@ pub struct App {
 }
 
 impl App {
-    pub async fn get_verification_code(&self, email: &str) -> Result<String, Error> {
+    pub async fn get_email_verification_code(&self, email: &str) -> Result<String, Error> {
         let client = reqwest::Client::new();
         let reply = admin_rest_request(
             client
                 .post(&format!("{}/verification/email/code", &self.url))
                 .json(
                     &json!({ "email": email, "app_id": &self.id, "auth_token": &self.auth_token }),
+                )
+                .header(ACCEPT, "application/json"),
+        )
+        .await?;
+
+        let code = reply["verification_code"].as_str().unwrap().to_owned();
+        Ok(code)
+    }
+
+    pub async fn get_sms_verification_code(&self, phone_number: &str) -> Result<String, Error> {
+        let client = reqwest::Client::new();
+        let reply = admin_rest_request(
+            client
+                .post(&format!("{}/verification/sms/code", &self.url))
+                .json(
+                    &json!({ "phone_number": phone_number, "app_id": &self.id, "auth_token": &self.auth_token }),
                 )
                 .header(ACCEPT, "application/json"),
         )
