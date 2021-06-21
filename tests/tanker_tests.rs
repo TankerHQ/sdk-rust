@@ -71,7 +71,7 @@ async fn has_correct_device_list() -> Result<(), Error> {
 
     let list = tanker.device_list().await?;
     assert_eq!(list.len(), 1);
-    assert_eq!(list[0].revoked, false);
+    assert!(!list[0].revoked);
     assert_eq!(list[0].id, tanker.device_id().unwrap());
 
     tanker.stop().await

@@ -98,7 +98,7 @@ pub async fn create(options: Options) -> Result<CTankerPtr, Error> {
         .unwrap_or_else(|| CString::new(RUST_SDK_TYPE).unwrap());
     let sdk_version = CString::new(RUST_SDK_VERSION).unwrap();
     let coptions = tanker_options {
-        version: 2,
+        version: 3,
         app_id: options.app_id.as_ptr(),
         url: options
             .url
@@ -108,6 +108,9 @@ pub async fn create(options: Options) -> Result<CTankerPtr, Error> {
         writable_path: options.writable_path.as_ptr(),
         sdk_type: sdk_type.as_ptr(),
         sdk_version: sdk_version.as_ptr(),
+        http_send_request: None,
+        http_cancel_request: None,
+        http_data: std::ptr::null_mut(),
     };
 
     let fut = unsafe { CFuture::new(tanker_create(&coptions)) };
