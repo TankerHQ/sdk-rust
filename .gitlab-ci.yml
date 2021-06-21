@@ -117,11 +117,3 @@ deploy:
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
-
-mirror:
-  extends:
-    - .deploy
-    - .tags/linux
-    - .rules/mirror
-  script:
-    - poetry run python run-ci.py mirror

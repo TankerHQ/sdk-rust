@@ -297,7 +297,6 @@ def main() -> None:
     deploy_parser = subparsers.add_parser("deploy")
     deploy_parser.add_argument("--version", required=True)
     deploy_parser.add_argument("--registry", required=True)
-    subparsers.add_parser("mirror")
 
     args = parser.parse_args()
     if args.home_isolation:
@@ -328,8 +327,6 @@ def main() -> None:
             pipeline_id=args.pipeline_id,
             job_name=args.job_name,
         )
-    elif args.command == "mirror":
-        tankerci.git.mirror(github_url="git@github.com:TankerHQ/sdk-rust")
     else:
         parser.print_help()
         sys.exit(1)
