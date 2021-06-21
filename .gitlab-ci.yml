@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /rust.yml
-  ref: ecfaa4031b36380595405ca7078f73daf08c6b1b
+  ref: 874483a45e99037b888688c0c3d0fb6a186da6b0
 
 check/native-from-sources/linux:
   extends:
@@ -117,11 +117,3 @@ deploy:
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
-
-mirror:
-  extends:
-    - .deploy
-    - .tags/linux
-    - .rules/mirror
-  script:
-    - poetry run python run-ci.py mirror
