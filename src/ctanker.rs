@@ -167,7 +167,7 @@ pub async unsafe fn register_identity(
     let fut = unsafe {
         CFuture::<c_void>::new(tanker_register_identity(ctanker, verification, &c_options))
     };
-    let token_str_ptr = fut.await? as *mut i8;
+    let token_str_ptr = fut.await? as *mut c_char;
     Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
         let str = CStr::from_ptr(str_ptr.as_ptr())
             .to_str()
@@ -190,7 +190,7 @@ pub async unsafe fn verify_identity(
     let fut = unsafe {
         CFuture::<c_void>::new(tanker_verify_identity(ctanker, verification, &c_options))
     };
-    let token_str_ptr = fut.await? as *mut i8;
+    let token_str_ptr = fut.await? as *mut c_char;
     Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
         let str = CStr::from_ptr(str_ptr.as_ptr())
             .to_str()
@@ -225,7 +225,7 @@ pub async unsafe fn set_verification_method(
             &c_options,
         ))
     };
-    let token_str_ptr = fut.await? as *mut i8;
+    let token_str_ptr = fut.await? as *mut c_char;
     Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
         let str = CStr::from_ptr(str_ptr.as_ptr())
             .to_str()
