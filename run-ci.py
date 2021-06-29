@@ -197,6 +197,9 @@ class Builder:
 
     def test(self) -> None:
         if not self._is_host_target():
+            tankerci.run(
+                "cargo", "build", "--target", self.target_triplet, cwd=self.src_path
+            )
             ui.info(self.profile, "is a cross-compiled target, skipping tests")
             return
         tankerci.run("cargo", "fmt", "--", "--check", cwd=self.src_path)
