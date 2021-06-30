@@ -1,8 +1,9 @@
-use crate::ctanker::{CEmailVerification, CVerification};
+use crate::ctanker::{CEmailVerification, CPhoneNumberVerification, CVerification};
 use std::ffi::CString;
 
-const CVERIFICATION_VERSION: u8 = 3;
+const CVERIFICATION_VERSION: u8 = 4;
 const CEMAIL_VERIFICATION_VERSION: u8 = 1;
+const CPHONE_NUMBER_VERIFICATION_VERSION: u8 = 1;
 
 #[repr(u8)]
 enum Type {
@@ -11,6 +12,7 @@ enum Type {
     VerificationKey = 3,
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken = 4,
+    PhoneNumber = 5,
 }
 
 pub(crate) struct CVerificationWrapper {
@@ -33,6 +35,11 @@ impl CVerificationWrapper {
                 },
                 passphrase: std::ptr::null(),
                 oidc_id_token: std::ptr::null(),
+                phone_number_verification: CPhoneNumberVerification {
+                    version: CPHONE_NUMBER_VERIFICATION_VERSION,
+                    phone_number: std::ptr::null(),
+                    verification_code: std::ptr::null(),
+                },
             },
         }
     }
@@ -47,6 +54,20 @@ impl CVerificationWrapper {
         wrapper.cverif.email_verification.verification_code = cverif_code.as_ptr();
 
         wrapper.cstrings.push(cemail);
+        wrapper.cstrings.push(cverif_code);
+        wrapper
+    }
+
+    pub(self) fn with_phone_number(phone_number: &str, verif_code: &str) -> Self {
+        let mut wrapper = Self::new();
+        let cphone_number = CString::new(phone_number).unwrap();
+        let cverif_code = CString::new(verif_code).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::PhoneNumber as u8;
+        wrapper.cverif.phone_number_verification.phone_number = cphone_number.as_ptr();
+        wrapper.cverif.phone_number_verification.verification_code = cverif_code.as_ptr();
+
+        wrapper.cstrings.push(cphone_number);
         wrapper.cstrings.push(cverif_code);
         wrapper
     }
@@ -100,6 +121,10 @@ pub enum Verification {
     VerificationKey(String),
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken(String),
+    PhoneNumber {
+        phone_number: String,
+        verification_code: String,
+    },
 }
 
 impl Verification {
@@ -114,6 +139,10 @@ impl Verification {
             }
             Verification::VerificationKey(key) => CVerificationWrapper::with_verification_key(&key),
             Verification::OIDCIDToken(token) => CVerificationWrapper::with_oidc_id_token(&token),
+            Verification::PhoneNumber {
+                phone_number,
+                verification_code,
+            } => CVerificationWrapper::with_phone_number(&phone_number, &verification_code),
         }
     }
 }

@@ -97,7 +97,7 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
     let email = "cold@in.af".to_string();
     let verif = Verification::Email {
         email: email.clone(),
-        verification_code: app.get_verification_code(&email).await?,
+        verification_code: app.get_email_verification_code(&email).await?,
     };
 
     let tanker = Core::new(app.make_options()).await?;
@@ -113,6 +113,28 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn check_sms_verif_is_setup() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let id = &app.create_identity(None);
+    let phone_number = "+33600001111".to_string();
+    let verif = Verification::PhoneNumber {
+        phone_number: phone_number.clone(),
+        verification_code: app.get_sms_verification_code(&phone_number).await?,
+    };
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(&id).await?;
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
+    let methods = tanker.get_verification_methods().await?;
+    tanker.stop().await?;
+
+    assert_eq!(&methods, &[VerificationMethod::PhoneNumber(phone_number)]);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn unlock_with_verif_code() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -122,7 +144,7 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
     tanker.start(&id).await?;
     let verif = Verification::Email {
         email: email.to_owned(),
-        verification_code: app.get_verification_code(&email).await?,
+        verification_code: app.get_email_verification_code(&email).await?,
     };
     tanker
         .register_identity(&verif, &VerificationOptions::new())
@@ -133,7 +155,7 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
     tanker.start(&id).await?;
     let verif = Verification::Email {
         email: email.to_owned(),
-        verification_code: app.get_verification_code(&email).await?,
+        verification_code: app.get_email_verification_code(&email).await?,
     };
     tanker
         .verify_identity(&verif, &VerificationOptions::new())

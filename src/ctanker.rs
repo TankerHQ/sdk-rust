@@ -12,6 +12,7 @@ use self::bindings::*;
 
 pub type CVerification = tanker_verification;
 pub type CEmailVerification = tanker_email_verification;
+pub type CPhoneNumberVerification = tanker_phone_number_verification;
 pub type CVerificationMethod = tanker_verification_method;
 pub type CDevice = tanker_device_list_elem;
 pub type CTankerPtr = *mut tanker_t;

@@ -16,6 +16,7 @@ pub enum VerificationMethod {
     VerificationKey,
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken,
+    PhoneNumber(String),
 }
 
 #[derive(FromPrimitive)]
@@ -27,6 +28,7 @@ enum CMethodType {
     VerificationKey = 3,
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken = 4,
+    PhoneNumber = 5,
 
     #[num_enum(default)]
     Invalid,
@@ -38,13 +40,19 @@ impl VerificationMethod {
         match ctype.into() {
             CMethodType::Email => {
                 // SAFETY: If we get a valid Email verification method, the email is a valid string
-                let c_email = unsafe { CStr::from_ptr(method.email) };
+                let c_email = unsafe { CStr::from_ptr(method.value) };
                 let email = c_email.to_str().unwrap().into();
                 Ok(VerificationMethod::Email(email))
             }
             CMethodType::Passphrase => Ok(VerificationMethod::Passphrase),
             CMethodType::VerificationKey => Ok(VerificationMethod::VerificationKey),
             CMethodType::OIDCIDToken => Ok(VerificationMethod::OIDCIDToken),
+            CMethodType::PhoneNumber => {
+                // SAFETY: If we get a valid PhoneNumber verification method, the number is a valid string
+                let c_phone_number = unsafe { CStr::from_ptr(method.value) };
+                let phone_number = c_phone_number.to_str().unwrap().into();
+                Ok(VerificationMethod::PhoneNumber(phone_number))
+            }
             CMethodType::Invalid => Err(Error::new(
                 ErrorCode::InternalError,
                 format!("Invalid verification method type {}", ctype),

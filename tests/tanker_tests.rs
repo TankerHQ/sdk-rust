@@ -181,7 +181,7 @@ async fn share_with_provisional_user() -> Result<(), Error> {
 
     let verif = Verification::Email {
         email: bob_email.clone(),
-        verification_code: app.get_verification_code(&bob_email).await?,
+        verification_code: app.get_email_verification_code(&bob_email).await?,
     };
     bob.verify_provisional_identity(&verif).await?;
 
@@ -209,7 +209,7 @@ async fn throws_if_identity_is_already_attached() -> Result<(), Error> {
 
     let verif = Verification::Email {
         email: bob_email.clone(),
-        verification_code: app.get_verification_code(&bob_email).await?,
+        verification_code: app.get_email_verification_code(&bob_email).await?,
     };
     bob.verify_provisional_identity(&verif).await?;
 
@@ -218,7 +218,7 @@ async fn throws_if_identity_is_already_attached() -> Result<(), Error> {
     assert_eq!(attach_result.status, Status::IdentityVerificationNeeded);
     let verif = Verification::Email {
         email: bob_email.clone(),
-        verification_code: app.get_verification_code(&bob_email).await?,
+        verification_code: app.get_email_verification_code(&bob_email).await?,
     };
     let err = alice.verify_provisional_identity(&verif).await.unwrap_err();
     assert_eq!(err.code(), ErrorCode::IdentityAlreadyAttached);
@@ -246,7 +246,7 @@ async fn attach_provisional_with_single_verif() -> Result<(), Error> {
     bob.start(&app.create_identity(None)).await?;
     let verif = Verification::Email {
         email: bob_email.clone(),
-        verification_code: app.get_verification_code(&bob_email).await?,
+        verification_code: app.get_email_verification_code(&bob_email).await?,
     };
     bob.register_identity(&verif, &VerificationOptions::new())
         .await?;
