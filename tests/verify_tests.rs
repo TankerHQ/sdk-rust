@@ -116,7 +116,7 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
 async fn check_sms_verif_is_setup() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
-    let phone_number = "+33600001111".to_string();
+    let phone_number = "+33639982233".to_string();
     let verif = Verification::PhoneNumber {
         phone_number: phone_number.clone(),
         verification_code: app.get_sms_verification_code(&phone_number).await?,
