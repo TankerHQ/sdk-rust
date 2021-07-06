@@ -133,16 +133,16 @@ impl Verification {
             Verification::Email {
                 email,
                 verification_code,
-            } => CVerificationWrapper::with_email(&email, &verification_code),
+            } => CVerificationWrapper::with_email(email, verification_code),
             Verification::Passphrase(passphrase) => {
-                CVerificationWrapper::with_passphrase(&passphrase)
+                CVerificationWrapper::with_passphrase(passphrase)
             }
-            Verification::VerificationKey(key) => CVerificationWrapper::with_verification_key(&key),
-            Verification::OIDCIDToken(token) => CVerificationWrapper::with_oidc_id_token(&token),
+            Verification::VerificationKey(key) => CVerificationWrapper::with_verification_key(key),
+            Verification::OIDCIDToken(token) => CVerificationWrapper::with_oidc_id_token(token),
             Verification::PhoneNumber {
                 phone_number,
                 verification_code,
-            } => CVerificationWrapper::with_phone_number(&phone_number, &verification_code),
+            } => CVerificationWrapper::with_phone_number(phone_number, verification_code),
         }
     }
 }
