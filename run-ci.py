@@ -21,13 +21,15 @@ TARGET_LIST = [
     "x86_64-linux-android",
     "i686-linux-android",
     "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "aarch64-apple-darwin",
     "x86_64-apple-ios",
     "x86_64-apple-darwin",
     "x86_64-unknown-linux-gnu",
 ]
 
 
-def profile_to_rust_target(platform: str, arch: str) -> str:
+def profile_to_rust_target(platform: str, arch: str, sdk: Optional[str]) -> str:
     if platform == "Android":
         if arch == "armv7":
             return "armv7-linux-androideabi"
@@ -38,10 +40,17 @@ def profile_to_rust_target(platform: str, arch: str) -> str:
         elif arch == "x86":
             return "i686-linux-android"
     elif platform == "Macos":
-        return "x86_64-apple-darwin"
+        if arch == "x86_64":
+            return "x86_64-apple-darwin"
+        elif arch == "armv8":
+            return "aarch64-apple-darwin"
     elif platform == "iOS":
         if arch == "armv8":
-            return "aarch64-apple-ios"
+            # TODO this is Tier 3, wait for a few weeks before being able to build for armv8 simulator
+            if sdk == "iphonesimulator":
+                return "aarch64-apple-ios-sim"
+            else:
+                return "aarch64-apple-ios"
         elif arch == "x86_64":
             return "x86_64-apple-ios"
     elif platform == "Linux":
@@ -100,8 +109,11 @@ class Builder:
         self.profile = profile
         self.tanker_source = tanker_source
         self.platform = tankerci.conan.get_profile_key("settings.os", profile)
+        self.sdk = None
+        if self.platform == "iOS":
+            self.sdk = tankerci.conan.get_profile_key("settings.os.sdk", profile)
         self.arch = tankerci.conan.get_profile_key("settings.arch", profile)
-        self.target_triplet = profile_to_rust_target(self.platform, self.arch)
+        self.target_triplet = profile_to_rust_target(self.platform, self.arch, self.sdk)
 
     def _is_android_target(self) -> bool:
         return self.platform == "Android"
@@ -197,9 +209,21 @@ class Builder:
 
     def test(self) -> None:
         if not self._is_host_target():
-            tankerci.run(
-                "cargo", "build", "--target", self.target_triplet, cwd=self.src_path
-            )
+            if self.target_triplet == "aarch64-apple-ios-sim":
+                tankerci.run(
+                    "cargo",
+                    "+nightly",
+                    "build",
+                    "-Z",
+                    "build-std",
+                    "--target",
+                    self.target_triplet,
+                    cwd=self.src_path,
+                )
+            else:
+                tankerci.run(
+                    "cargo", "build", "--target", self.target_triplet, cwd=self.src_path
+                )
             ui.info(self.profile, "is a cross-compiled target, skipping tests")
             return
         tankerci.run("cargo", "fmt", "--", "--check", cwd=self.src_path)
