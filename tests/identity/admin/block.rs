@@ -38,14 +38,14 @@ fn serialized_block(
     let mut data = Vec::new();
     data.extend(serialized_varint(BLOCK_FORMAT_VERSION));
     data.extend(serialized_varint(index));
-    data.extend_from_slice(&trustchain_id);
+    data.extend_from_slice(trustchain_id);
 
     data.extend(serialized_varint(nature));
     data.extend(serialized_varint(payload.len() as u64));
-    data.extend_from_slice(&payload);
+    data.extend_from_slice(payload);
 
     data.extend_from_slice(author);
-    data.extend_from_slice(&signature);
+    data.extend_from_slice(signature);
 
     data
 }
