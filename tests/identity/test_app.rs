@@ -110,7 +110,7 @@ impl TestApp {
 
     pub async fn start_anonymous(&self, identity: &str) -> Result<Core, Error> {
         let tanker = Core::new(self.make_options()).await?;
-        let status = tanker.start(&identity).await?;
+        let status = tanker.start(identity).await?;
         assert_eq!(status, Status::IdentityRegistrationNeeded);
 
         let key = tanker.generate_verification_key().await?;

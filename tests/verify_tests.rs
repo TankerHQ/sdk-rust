@@ -10,7 +10,7 @@ async fn validate_new_device_with_verif_key() -> Result<(), Error> {
     let id = &app.create_identity(None);
 
     let tanker = Core::new(app.make_options()).await?;
-    assert_eq!(tanker.start(&id).await?, Status::IdentityRegistrationNeeded);
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
     let key = Verification::VerificationKey(tanker.generate_verification_key().await?);
     tanker
         .register_identity(&key, &VerificationOptions::new())
@@ -19,7 +19,7 @@ async fn validate_new_device_with_verif_key() -> Result<(), Error> {
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
-    assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
+    assert_eq!(tanker.start(id).await?, Status::IdentityVerificationNeeded);
     tanker
         .verify_identity(&key, &VerificationOptions::new())
         .await?;
@@ -33,7 +33,7 @@ async fn setup_and_use_passphrase() -> Result<(), Error> {
     let id = &app.create_identity(None);
     let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
     let tanker = Core::new(app.make_options()).await?;
-    assert_eq!(tanker.start(&id).await?, Status::IdentityRegistrationNeeded);
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
     tanker
         .register_identity(&pass, &VerificationOptions::new())
         .await?;
@@ -41,7 +41,7 @@ async fn setup_and_use_passphrase() -> Result<(), Error> {
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
-    assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
+    assert_eq!(tanker.start(id).await?, Status::IdentityVerificationNeeded);
     tanker
         .verify_identity(&pass, &VerificationOptions::new())
         .await?;
@@ -58,7 +58,7 @@ async fn unlock_with_updated_passphrase() -> Result<(), Error> {
 
     let verif_options = &VerificationOptions::new();
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     tanker.register_identity(&first_pass, verif_options).await?;
     tanker
         .set_verification_method(&second_pass, verif_options)
@@ -66,7 +66,7 @@ async fn unlock_with_updated_passphrase() -> Result<(), Error> {
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
-    assert_eq!(tanker.start(&id).await?, Status::IdentityVerificationNeeded);
+    assert_eq!(tanker.start(id).await?, Status::IdentityVerificationNeeded);
     tanker.verify_identity(&second_pass, verif_options).await?;
     assert_eq!(tanker.status(), Status::Ready);
     tanker.stop().await
@@ -79,7 +79,7 @@ async fn check_passphrase_is_setup() -> Result<(), Error> {
     let pass = Verification::Passphrase("The Cost of Legacy".into());
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     tanker
         .register_identity(&pass, &VerificationOptions::new())
         .await?;
@@ -101,7 +101,7 @@ async fn check_email_verif_is_setup() -> Result<(), Error> {
     };
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     tanker
         .register_identity(&verif, &VerificationOptions::new())
         .await?;
@@ -123,7 +123,7 @@ async fn check_sms_verif_is_setup() -> Result<(), Error> {
     };
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     tanker
         .register_identity(&verif, &VerificationOptions::new())
         .await?;
@@ -141,10 +141,10 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
     let email = "mono@chromat.ic";
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     let verif = Verification::Email {
         email: email.to_owned(),
-        verification_code: app.get_email_verification_code(&email).await?,
+        verification_code: app.get_email_verification_code(email).await?,
     };
     tanker
         .register_identity(&verif, &VerificationOptions::new())
@@ -152,10 +152,10 @@ async fn unlock_with_verif_code() -> Result<(), Error> {
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     let verif = Verification::Email {
         email: email.to_owned(),
-        verification_code: app.get_email_verification_code(&email).await?,
+        verification_code: app.get_email_verification_code(email).await?,
     };
     tanker
         .verify_identity(&verif, &VerificationOptions::new())
@@ -216,7 +216,7 @@ async fn get_session_token_with_register_identity() -> Result<(), Error> {
     let pass = Verification::Passphrase("The Cost of Legacy".into());
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     let token = tanker
         .register_identity(&pass, &VerificationOptions::new().with_session_token())
         .await?;
@@ -234,7 +234,7 @@ async fn get_session_token_with_verify_identity() -> Result<(), Error> {
     let pass = Verification::Passphrase("Merge remote-tracking branch 'rust/rust-next'".into());
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     tanker
         .register_identity(&pass, &VerificationOptions::new())
         .await?;
@@ -257,7 +257,7 @@ async fn get_session_token_with_set_verififcation_method() -> Result<(), Error> 
     let pass2 = Verification::Passphrase("Deimos".into());
 
     let tanker = Core::new(app.make_options()).await?;
-    tanker.start(&id).await?;
+    tanker.start(id).await?;
     tanker
         .register_identity(&pass, &VerificationOptions::new())
         .await?;
