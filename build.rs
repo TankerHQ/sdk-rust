@@ -1,10 +1,13 @@
 use std::error::Error;
 use std::io::Write;
+#[cfg(target_family = "unix")]
 use std::os::unix::ffi::OsStrExt;
+#[cfg(target_family = "windows")]
+use std::path::Path;
 use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
-const TANKER_LIB_BASENAME: &str = "tanker";
+const TANKER_LIB_BASENAME: &str = "ctanker";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let target_triple = std::env::var("TARGET")?;
@@ -13,7 +16,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     bindings_folder.push("native");
     bindings_folder.push(&target_triple);
 
+    #[cfg(target_family = "unix")]
     let tanker_lib_filename = &format!("lib{}.a", TANKER_LIB_BASENAME);
+    #[cfg(not(target_family = "unix"))]
+    let tanker_lib_filename = "ctanker.lib";
     if !bindings_folder.exists() {
         panic!(
             "Target platform {} is not supported ({} does not exist)",
@@ -48,11 +54,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
+    #[cfg(target_family = "unix")]
     let bindings_folder = bindings_folder.as_os_str().as_bytes();
-    assert!(!bindings_folder.contains(&b'='));
-    assert!(!bindings_folder.contains(&b'\0'));
-    assert!(!bindings_folder.contains(&b'\n'));
+    #[cfg(target_family = "unix")]
+    {
+        assert!(!bindings_folder.contains(&b'='));
+        assert!(!bindings_folder.contains(&b'\0'));
+        assert!(!bindings_folder.contains(&b'\n'));
+    }
 
+    #[cfg(not(target_family = "unix"))]
+    let bindings_folder = bindings_folder.to_string_lossy();
+    #[cfg(not(target_family = "unix"))]
+    let bindings_folder = bindings_folder.as_bytes();
     // Export an env var so we can include ctanker.rs in the source code
     print!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER=");
     std::io::stdout().write_all(bindings_folder).unwrap();
@@ -70,6 +84,24 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("cargo:rustc-link-lib=dylib=c++abi");
         }
         _ => (),
+    }
+
+    #[cfg(target_family = "windows")]
+    {
+        let build_type = if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        };
+        let tankersdk_bin_path = Path::new("./native/x86_64-pc-windows-msvc");
+        let target_path = format!("target/x86_64-pc-windows-msvc/{}/deps/", build_type);
+        let target_path = Path::new(&target_path);
+        std::fs::create_dir_all(target_path)?;
+        // copy the DLL alongside unit tests
+        std::fs::copy(
+            tankersdk_bin_path.join("ctanker.dll"),
+            target_path.join("ctanker.dll"),
+        )?;
     }
 
     Ok(())

@@ -11,6 +11,14 @@ check/native-from-sources/linux:
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile linux-release
 
+check/native-from-sources/windows:
+  extends:
+    - .check
+    - .tags/windows
+    - .rules/native-from-sources
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile vs2019-release-shared
+
 check/native-from-sources/android:
   extends:
     - .check
@@ -59,6 +67,15 @@ check/deployed-native/linux:
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile linux-release
+
+check/deployed-native/windows:
+  extends:
+    - .check
+    - .tags/windows
+    - .rules/deployed-native/release-artifacts
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile vs2019-release-shared
 
 check/deployed-native/android:
   extends:
@@ -113,6 +130,15 @@ check/downstream/linux:
     - .before-script/download-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile linux-release
+
+check/downstream/windows:
+  extends:
+    - .check
+    - .tags/windows
+    - .rules/check/downstream/windows
+    - .before-script/download-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile vs2019-release-shared
 
 check/downstream/android:
   extends:
