@@ -126,7 +126,7 @@ pub async unsafe fn destroy(ctanker: CTankerPtr) {
 pub unsafe fn status(ctanker: CTankerPtr) -> Status {
     let status = unsafe { tanker_status(ctanker) };
     // SAFETY: The native lib never returns invalid status codes
-    unsafe { Status::from_unchecked(status) }
+    unsafe { Status::from_unchecked(status as u32) }
 }
 
 pub async unsafe fn start(ctanker: CTankerPtr, identity: &str) -> Result<Status, Error> {

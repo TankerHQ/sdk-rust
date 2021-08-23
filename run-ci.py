@@ -12,6 +12,7 @@ from tankerci.conan import TankerSource
 import tankerci.conan
 import tankerci.git
 import tankerci.gitlab
+import tankerci.cpp
 from tankerci.build_info import DepsConfig
 
 
@@ -26,6 +27,7 @@ TARGET_LIST = [
     "x86_64-apple-ios",
     "x86_64-apple-darwin",
     "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
 ]
 
 
@@ -55,6 +57,8 @@ def profile_to_rust_target(platform: str, arch: str, sdk: Optional[str]) -> str:
             return "x86_64-apple-ios"
     elif platform == "Linux":
         return "x86_64-unknown-linux-gnu"
+    elif platform == "Windows":
+        return "x86_64-pc-windows-msvc"
 
     raise Exception(f"Unsupported target architecture: {platform}-{arch}")
 
@@ -91,6 +95,9 @@ def get_android_bin_path() -> Path:
 
 
 def bind_gen(*, header_source: Path, output_file: Path, include_path: Path) -> None:
+    # bindgen will call clang, which needs vcvarsall to be set
+    # otherwise, it will fail to find stdbool.h
+    tankerci.cpp.set_build_env()
     tankerci.run(
         "bindgen",
         "--no-layout-tests",
@@ -123,18 +130,15 @@ class Builder:
     def _is_ios_target(self) -> bool:
         return self.platform == "iOS"
 
+    @property
+    def _is_windows_target(self) -> bool:
+        return self.platform == "Windows"
 
     @property
     def _is_host_target(self) -> bool:
         return not (self._is_android_target or self._is_ios_target)
 
-
-    def _prepare_profile(self) -> None:
-        conan_out = self.src_path / "conan" / "out" / self.profile
-        package_path = conan_out / "package"
-        depsConfig = DepsConfig(self.src_path / "conan" / "out" / self.profile)
-
-        # copy includes
+    def _copy_includes(self, package_path: Path, depsConfig: DepsConfig) -> None:
         package_include = package_path / "include"
         if package_include.exists():
             shutil.rmtree(package_include)
@@ -150,25 +154,9 @@ class Builder:
             ui.info_2(header, "->", header_dest_dir)
             shutil.copy(header, header_dest_dir)
 
-        # copy all .a in deplibs
-        package_libs = package_path / "deplibs"
-        package_libs.mkdir(parents=True, exist_ok=True)
-        for lib_path in depsConfig.all_lib_paths():
-            shutil.copy(lib_path, package_libs)
-
-        native_path = self.src_path / "native" / self.target_triplet
-        if native_path.exists():
-            shutil.rmtree(native_path)
-        native_path.mkdir(parents=True)
-        # merge all .a in deplibs into one big libtanker.a
-        self._merge_all_libs(package_path, native_path)
-        bind_gen(
-            header_source=include_path / "ctanker.h",
-            output_file=native_path / "ctanker.rs",
-            include_path=include_path,
-        )
-
-    def _merge_all_libs(self, package_path: Path, native_path: Path) -> None:
+    def _merge_all_libs(
+        self, depsConfig: DepsConfig, package_path: Path, native_path: Path
+    ) -> None:
         with tankerci.working_directory(package_path):
             env = os.environ.copy()
             if self._is_android_target:
@@ -183,6 +171,13 @@ class Builder:
             libctanker_a = Path("libctanker.a")
             if libctanker_a.exists():
                 libctanker_a.unlink()
+
+            package_libs = package_path / "deplibs"
+            package_libs.mkdir(parents=True, exist_ok=True)
+            for lib_path in depsConfig.all_lib_paths():
+                ui.info_1("copying", lib_path, "to", package_libs)
+                shutil.copy(lib_path, package_libs)
+
             # Apple prefixes symbols with '_'
             tankerci.run(
                 "armerge --keep-symbols '^_?tanker_.*' --output libctanker.a"
@@ -199,6 +194,31 @@ class Builder:
                 )
             shutil.copy("libctanker.a", native_path)
 
+    def _prepare_profile(self) -> None:
+        conan_out = self.src_path / "conan" / "out" / self.profile
+        package_path = conan_out / "package"
+        depsConfig = DepsConfig(self.src_path / "conan" / "out" / self.profile)
+
+        self._copy_includes(package_path, depsConfig)
+
+        native_path = self.src_path / "native" / self.target_triplet
+        if native_path.exists():
+            shutil.rmtree(native_path)
+
+        native_path.mkdir(parents=True)
+
+        if self._is_windows_target:
+            for lib_path in depsConfig.all_lib_paths():
+                ui.info_1("copying", lib_path, "to", native_path)
+                shutil.copy(lib_path, native_path)
+        else:
+            self._merge_all_libs(depsConfig, package_path, native_path)
+        include_path = package_path / "include" / "ctanker"
+        bind_gen(
+            header_source=include_path / "ctanker.h",
+            output_file=native_path / "ctanker.rs",
+            include_path=include_path,
+        )
 
     def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
         tanker_deployed_ref = tanker_ref
@@ -244,6 +264,11 @@ class Builder:
             "unknown-lints",
             cwd=self.src_path,
         )
+        if self._is_windows_target:
+            shutil.copy(
+                Path("native") / self.target_triplet / "ctanker.dll",
+                Path("target") / "debug/deps",
+            )
         tankerci.run(
             "cargo", "test", "--target", self.target_triplet, cwd=self.src_path
         )
