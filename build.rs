@@ -4,7 +4,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
-const TANKER_LIB_BASENAME: &str = "tanker";
+const TANKER_LIB_BASENAME: &str = "ctanker";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let target_triple = std::env::var("TARGET")?;

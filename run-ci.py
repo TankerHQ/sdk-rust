@@ -175,12 +175,12 @@ class Builder:
 
             if self._is_ios_target():
                 env["ARMERGE_LDFLAGS"] = "-bitcode_bundle"
-            libtanker_a = Path("libtanker.a")
-            if libtanker_a.exists():
-                libtanker_a.unlink()
+            libctanker_a = Path("libctanker.a")
+            if libctanker_a.exists():
+                libctanker_a.unlink()
             # Apple prefixes symbols with '_'
             tankerci.run(
-                "armerge --keep-symbols '^_?tanker_.*' --output libtanker.a"
+                "armerge --keep-symbols '^_?tanker_.*' --output libctanker.a"
                 " deplibs/*.a",
                 shell=True,
                 env=env,
@@ -190,9 +190,10 @@ class Builder:
                 # HACK: Android forces debug symbols, we need to patch the
                 # toolchain to remove them. Until then, strip them here.
                 tankerci.run(
-                    str(llvm_strip), "--strip-debug", "--strip-unneeded", "libtanker.a"
+                    str(llvm_strip), "--strip-debug", "--strip-unneeded", "libctanker.a"
                 )
-            shutil.copy("libtanker.a", native_path)
+            shutil.copy("libctanker.a", native_path)
+
 
     def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
         tanker_deployed_ref = tanker_ref
