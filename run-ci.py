@@ -115,14 +115,19 @@ class Builder:
         self.arch = tankerci.conan.get_profile_key("settings.arch", profile)
         self.target_triplet = profile_to_rust_target(self.platform, self.arch, self.sdk)
 
+    @property
     def _is_android_target(self) -> bool:
         return self.platform == "Android"
 
+    @property
     def _is_ios_target(self) -> bool:
         return self.platform == "iOS"
 
+
+    @property
     def _is_host_target(self) -> bool:
-        return not (self._is_android_target() or self._is_ios_target())
+        return not (self._is_android_target or self._is_ios_target)
+
 
     def _prepare_profile(self) -> None:
         conan_out = self.src_path / "conan" / "out" / self.profile
@@ -166,14 +171,14 @@ class Builder:
     def _merge_all_libs(self, package_path: Path, native_path: Path) -> None:
         with tankerci.working_directory(package_path):
             env = os.environ.copy()
-            if self._is_android_target():
+            if self._is_android_target:
                 android_bin_path = get_android_bin_path()
                 env["LD"] = str(android_bin_path / "ld.lld")
                 env["OBJCOPY"] = str(android_bin_path / "llvm-objcopy")
                 ui.info(f'Using {env["LD"]}')
                 ui.info(f'Using {env["OBJCOPY"]}')
 
-            if self._is_ios_target():
+            if self._is_ios_target:
                 env["ARMERGE_LDFLAGS"] = "-bitcode_bundle"
             libctanker_a = Path("libctanker.a")
             if libctanker_a.exists():
@@ -185,7 +190,7 @@ class Builder:
                 shell=True,
                 env=env,
             )
-            if self._is_android_target():
+            if self._is_android_target:
                 llvm_strip = android_bin_path / "llvm-strip"
                 # HACK: Android forces debug symbols, we need to patch the
                 # toolchain to remove them. Until then, strip them here.
@@ -209,7 +214,7 @@ class Builder:
         self._prepare_profile()
 
     def test(self) -> None:
-        if not self._is_host_target():
+        if not self._is_host_target:
             if self.target_triplet == "aarch64-apple-ios-sim":
                 tankerci.run(
                     "cargo",
