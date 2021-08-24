@@ -28,6 +28,8 @@ TARGET_LIST = [
     "x86_64-apple-darwin",
     "x86_64-unknown-linux-gnu",
     "x86_64-pc-windows-msvc",
+    # special one, it is the same as msvc, but the import lib is renamed to libctanker.a
+    "x86_64-pc-windows-gnu",
 ]
 
 
@@ -211,6 +213,16 @@ class Builder:
             for lib_path in depsConfig.all_lib_paths():
                 ui.info_1("copying", lib_path, "to", native_path)
                 shutil.copy(lib_path, native_path)
+            # handle mingw target
+            mingw_path = self.src_path / "native" / "x86_64-pc-windows-gnu"
+            if mingw_path.exists():
+                shutil.rmtree(mingw_path)
+            shutil.copytree(native_path, mingw_path)
+            # rename import lib to what GCC expects
+            os.rename(mingw_path / "ctanker.lib", mingw_path / "libctanker.a")
+            os.rename(
+                mingw_path / "tanker_admin-c.lib", mingw_path / "libtanker_admin-c.a"
+            )
         else:
             self._merge_all_libs(depsConfig, package_path, native_path)
         include_path = package_path / "include" / "ctanker"
@@ -219,6 +231,11 @@ class Builder:
             output_file=native_path / "ctanker.rs",
             include_path=include_path,
         )
+        if self._is_windows_target:
+            shutil.copy(
+                native_path / "ctanker.rs",
+                self.src_path / "native" / "x86_64-pc-windows-gnu" / "ctanker.rs",
+            )
 
     def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
         tanker_deployed_ref = tanker_ref
