@@ -289,7 +289,6 @@ def build_and_test(
             src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
         )
         builder.prepare(update, tanker_ref)
-        # tankerci.run("cargo", "build")
         if test:
             builder.test()
 
