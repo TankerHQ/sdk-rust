@@ -10,11 +10,11 @@ const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
 const TANKER_LIB_BASENAME: &str = "ctanker";
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let target_triple = std::env::var("TARGET")?;
+    let target_triplet = std::env::var("TARGET")?;
     let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").unwrap();
     let mut bindings_folder = PathBuf::from(manifest_dir);
     bindings_folder.push("native");
-    bindings_folder.push(&target_triple);
+    bindings_folder.push(&target_triplet);
 
     #[cfg(target_family = "unix")]
     let tanker_lib_filename = &format!("lib{}.a", TANKER_LIB_BASENAME);
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     if !bindings_folder.exists() {
         panic!(
             "Target platform {} is not supported ({} does not exist)",
-            target_triple,
+            target_triplet,
             bindings_folder.to_string_lossy()
         );
     }
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     std::io::stdout().write_all(bindings_folder).unwrap();
     println!();
     println!("cargo:rustc-link-lib=static={}", TANKER_LIB_BASENAME);
-    match target_triple.as_str() {
+    match target_triplet.as_str() {
         "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
         "x86_64-apple-darwin" => {
             println!("cargo:rustc-link-lib=dylib=c++");
