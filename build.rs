@@ -7,30 +7,35 @@ use std::path::Path;
 use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
-const TANKER_LIB_BASENAME: &str = "ctanker";
+
+const MSVC_TRIPLET: &str = "x86_64-pc-windows-msvc";
+
+fn tanker_lib_filename(triplet: &str) -> &'static str {
+    match triplet {
+        MSVC_TRIPLET => "ctanker.lib",
+        _ => "libctanker.a",
+    }
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let target_triple = std::env::var("TARGET")?;
+    let target_triplet = std::env::var("TARGET")?;
     let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").unwrap();
     let mut bindings_folder = PathBuf::from(manifest_dir);
     bindings_folder.push("native");
-    bindings_folder.push(&target_triple);
+    bindings_folder.push(&target_triplet);
 
-    #[cfg(target_family = "unix")]
-    let tanker_lib_filename = &format!("lib{}.a", TANKER_LIB_BASENAME);
-    #[cfg(not(target_family = "unix"))]
-    let tanker_lib_filename = "ctanker.lib";
+    let lib_filename = tanker_lib_filename(&target_triplet);
     if !bindings_folder.exists() {
         panic!(
             "Target platform {} is not supported ({} does not exist)",
-            target_triple,
+            target_triplet,
             bindings_folder.to_string_lossy()
         );
     }
-    if !bindings_folder.join(tanker_lib_filename).exists() {
+    if !bindings_folder.join(lib_filename).exists() {
         panic!(
             "Couldn't find {} in {}",
-            tanker_lib_filename,
+            lib_filename,
             bindings_folder.to_string_lossy()
         );
     }
@@ -50,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "cargo:rerun-if-changed={}/{}",
         bindings_folder.to_string_lossy(),
-        tanker_lib_filename
+        lib_filename
     );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
@@ -63,9 +68,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         assert!(!bindings_folder.contains(&b'\n'));
     }
 
-    #[cfg(not(target_family = "unix"))]
+    #[cfg(target_family = "windows")]
     let bindings_folder = bindings_folder.to_string_lossy();
-    #[cfg(not(target_family = "unix"))]
+    #[cfg(target_family = "windows")]
     let bindings_folder = bindings_folder.as_bytes();
     // Export an env var so we can include ctanker.rs in the source code
     print!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER=");
@@ -76,8 +81,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     print!("cargo:rustc-link-search=");
     std::io::stdout().write_all(bindings_folder).unwrap();
     println!();
-    println!("cargo:rustc-link-lib=static={}", TANKER_LIB_BASENAME);
-    match target_triple.as_str() {
+    println!("cargo:rustc-link-lib=static=ctanker",);
+    match target_triplet.as_str() {
         "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
         "x86_64-apple-darwin" => {
             println!("cargo:rustc-link-lib=dylib=c++");
@@ -93,15 +98,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         } else {
             "release"
         };
-        let tankersdk_bin_path = Path::new("./native/x86_64-pc-windows-msvc");
-        let target_path = format!("target/x86_64-pc-windows-msvc/{}/deps/", build_type);
-        let target_path = Path::new(&target_path);
-        std::fs::create_dir_all(target_path)?;
-        // copy the DLL alongside unit tests
-        std::fs::copy(
-            tankersdk_bin_path.join("ctanker.dll"),
-            target_path.join("ctanker.dll"),
-        )?;
+
+        let tankersdk_bin_path = format!("native/{}", target_triplet);
+        let tankersdk_bin_path = Path::new(&tankersdk_bin_path);
+        let unit_test_path = format!("target/{}/{}/deps/", target_triplet, build_type);
+        let unit_test_path = Path::new(&unit_test_path);
+        std::fs::create_dir_all(unit_test_path)?;
+        let target_path = unit_test_path.join("ctanker.dll");
+        if !target_path.exists() {
+            std::fs::copy(tankersdk_bin_path.join("ctanker.dll"), target_path)?;
+        }
     }
 
     Ok(())
