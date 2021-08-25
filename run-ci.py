@@ -318,6 +318,7 @@ def build_and_test(
         builder.prepare(update, tanker_ref)
         if test:
             builder.test()
+    tankerci.run("cargo", "build", cwd=Path.cwd() / "build-setup")
 
 
 def deploy(args: argparse.Namespace) -> None:
@@ -334,6 +335,7 @@ def deploy(args: argparse.Namespace) -> None:
     tankerci.bump_files(version)
 
     tankerci.run("cargo", "publish", "--allow-dirty", f"--registry={registry}", cwd="sdk")
+    tankerci.run("cargo", "publish", f"--registry={registry}", cwd="build-setup")
 
 
 def main() -> None:
