@@ -96,12 +96,21 @@ def get_android_bin_path() -> Path:
         raise
 
 
-def bind_gen(*, header_source: Path, output_file: Path, include_path: Path) -> None:
+def bind_gen(
+    *, header_source: Path, output_file: Path, include_path: Path, dynamic_loading: bool
+) -> None:
     # bindgen will call clang, which needs vcvarsall to be set
     # otherwise, it will fail to find stdbool.h
     tankerci.cpp.set_build_env()
+    args = []
+    if dynamic_loading:
+        args += [
+            "--dynamic-loading",
+            "ctanker_api",
+        ]
     tankerci.run(
         "bindgen",
+        *args,
         "--no-layout-tests",
         str(header_source),
         "-o",
@@ -230,6 +239,7 @@ class Builder:
             header_source=include_path / "ctanker.h",
             output_file=native_path / "ctanker.rs",
             include_path=include_path,
+            dynamic_loading=self._is_windows_target,
         )
         if self._is_windows_target:
             shutil.copy(
