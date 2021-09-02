@@ -87,10 +87,24 @@ pub struct CTankerLib {
     ctanker_api: ctanker_api,
 }
 
+// TODO try to not export the macro from the crate, plz tim, thx
+#[cfg(target_family = "windows")]
+#[macro_export]
+macro_rules! tanker_call {
+    ($self:ident, $func_name:ident($($args:tt)*)) => { $self.ctanker_api.$func_name($($args)*) };
+}
+#[cfg(target_family = "windows")]
+#[macro_export]
+macro_rules! tanker_call_ext {
+    ($func_name:ident($($args:tt)*)) => { CTankerLib::get().ctanker_api.$func_name($($args)*) };
+}
+
+#[cfg(not(target_family = "windows"))]
 #[macro_export]
 macro_rules! tanker_call {
     ($self:ident, $func_name:ident($($args:tt)*)) => { $func_name($($args)*) };
 }
+#[cfg(not(target_family = "windows"))]
 #[macro_export]
 macro_rules! tanker_call_ext {
     ($func_name:ident($($args:tt)*)) => { $func_name($($args)*) };

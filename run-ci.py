@@ -224,14 +224,8 @@ class Builder:
                 shutil.copy(lib_path, native_path)
             # handle mingw target
             mingw_path = self.src_path / "native" / "x86_64-pc-windows-gnu"
-            if mingw_path.exists():
-                shutil.rmtree(mingw_path)
-            shutil.copytree(native_path, mingw_path)
-            # rename import lib to what GCC expects
-            os.rename(mingw_path / "ctanker.lib", mingw_path / "libctanker.a")
-            os.rename(
-                mingw_path / "tanker_admin-c.lib", mingw_path / "libtanker_admin-c.a"
-            )
+            # prepare is called twice, so ignore when dirs exists
+            shutil.copytree(native_path, mingw_path, dirs_exist_ok=True)
         else:
             self._merge_all_libs(depsConfig, package_path, native_path)
         include_path = package_path / "include" / "ctanker"
@@ -242,10 +236,7 @@ class Builder:
             dynamic_loading=self._is_windows_target,
         )
         if self._is_windows_target:
-            shutil.copy(
-                native_path / "ctanker.rs",
-                self.src_path / "native" / "x86_64-pc-windows-gnu" / "ctanker.rs",
-            )
+            shutil.copyfile(native_path / "ctanker.rs", mingw_path / "ctanker.rs")
 
     def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
         tanker_deployed_ref = tanker_ref
@@ -259,6 +250,19 @@ class Builder:
             tanker_deployed_ref=tanker_deployed_ref,
         )
         self._prepare_profile()
+
+    def _cargo(self, subcommand: str) -> None:
+        tankerci.run(
+            "cargo", subcommand, "--target", self.target_triplet, cwd=self.src_path
+        )
+        if self._is_windows_target:
+            tankerci.run(
+                "cargo",
+                subcommand,
+                "--target",
+                "x86_64-pc-windows-gnu",
+                cwd=self.src_path,
+            )
 
     def test(self) -> None:
         if not self._is_host_target:
@@ -274,9 +278,8 @@ class Builder:
                     cwd=self.src_path,
                 )
             else:
-                tankerci.run(
-                    "cargo", "build", "--target", self.target_triplet, cwd=self.src_path
-                )
+                self._cargo("build")
+
             ui.info(self.profile, "is a cross-compiled target, skipping tests")
             return
         tankerci.run("cargo", "fmt", "--", "--check", cwd=self.src_path)
@@ -296,9 +299,7 @@ class Builder:
                 Path("native") / self.target_triplet / "ctanker.dll",
                 Path("target") / "debug/deps",
             )
-        tankerci.run(
-            "cargo", "test", "--target", self.target_triplet, cwd=self.src_path
-        )
+        self._cargo("test")
 
 
 def build_and_test(
