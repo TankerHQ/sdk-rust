@@ -1,4 +1,4 @@
-use crate::ctanker;
+use crate::ctanker::CTankerLib;
 use crate::*;
 use futures::executor::block_on;
 use futures::AsyncRead;
@@ -22,14 +22,14 @@ impl Core {
     /// # Result::<(), Error>::Ok(()) };
     /// ```
     pub async fn new(options: Options) -> Result<Self, Error> {
-        ctanker::init();
-        let ctanker = ctanker::create(options).await?;
+        CTankerLib::init();
+        let ctanker = CTankerLib::get().create(options).await?;
 
         Ok(Self { ctanker })
     }
 
     pub fn set_log_handler(callback: Box<dyn Fn(LogRecord) + Send>) {
-        unsafe { ctanker::set_log_handler(callback) }
+        unsafe { CTankerLib::set_log_handler(callback) }
     }
 
     /// The version of the Rust SDK crate
@@ -41,26 +41,27 @@ impl Core {
     /// The version of the native SDK
     #[doc(hidden)]
     pub fn native_version() -> &'static str {
-        ctanker::version_string()
+        CTankerLib::init();
+        CTankerLib::get().version_string()
     }
 
     /// The status of the Tanker session
     pub fn status(&self) -> Status {
-        unsafe { ctanker::status(self.ctanker) }
+        unsafe { CTankerLib::get().status(self.ctanker) }
     }
 
     /// The current device's ID.
     ///
     /// The Tanker status must be `Ready`.
     pub fn device_id(&self) -> Result<String, Error> {
-        unsafe { block_on(ctanker::device_id(self.ctanker)) }
+        unsafe { block_on(CTankerLib::get().device_id(self.ctanker)) }
     }
 
     /// The user's devices list.
     ///
     /// The Tanker status must be `Ready`.
     pub async fn device_list(&self) -> Result<Vec<Device>, Error> {
-        unsafe { ctanker::device_list(self.ctanker).await }
+        unsafe { CTankerLib::get().device_list(self.ctanker).await }
     }
 
     /// Starts a Tanker session and returns a [Status](enum.Status.html).
@@ -70,12 +71,12 @@ impl Core {
     /// # Arguments
     /// * `identity` - A Tanker identity to use for this session
     pub async fn start(&self, identity: &str) -> Result<Status, Error> {
-        unsafe { ctanker::start(self.ctanker, identity).await }
+        unsafe { CTankerLib::get().start(self.ctanker, identity).await }
     }
 
     /// Stops the current Tanker session.
     pub async fn stop(&self) -> Result<(), Error> {
-        unsafe { ctanker::stop(self.ctanker).await }
+        unsafe { CTankerLib::get().stop(self.ctanker).await }
     }
 
     /// Registers the user's identity with which [start()](Self::start) has been called, and starts the session.
@@ -91,7 +92,8 @@ impl Core {
     ) -> Result<Option<String>, Error> {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
-            ctanker::register_identity(self.ctanker, verif_wrapper.as_cverification(), options)
+            CTankerLib::get()
+                .register_identity(self.ctanker, verif_wrapper.as_cverification(), options)
                 .await
         }
     }
@@ -109,7 +111,9 @@ impl Core {
     ) -> Result<Option<String>, Error> {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
-            ctanker::verify_identity(self.ctanker, verif_wrapper.as_cverification(), options).await
+            CTankerLib::get()
+                .verify_identity(self.ctanker, verif_wrapper.as_cverification(), options)
+                .await
         }
     }
 
@@ -120,7 +124,11 @@ impl Core {
     /// Depending on the result, verifying the provisional identity with [verify_provisional_identity](Self::verify_provisional_identity) might be necessary.
     pub async fn attach_provisional_identity(&self, identity: &str) -> Result<AttachResult, Error> {
         let identity = CString::new(identity).unwrap();
-        unsafe { ctanker::attach_provisional_identity(self.ctanker, &identity).await }
+        unsafe {
+            CTankerLib::get()
+                .attach_provisional_identity(self.ctanker, &identity)
+                .await
+        }
     }
 
     /// Verifies an attached provisional identity.
@@ -131,7 +139,8 @@ impl Core {
     pub async fn verify_provisional_identity(&self, prov: &Verification) -> Result<(), Error> {
         let verif_wrapper = prov.to_cverification_wrapper();
         unsafe {
-            ctanker::verify_provisional_identity(self.ctanker, verif_wrapper.as_cverification())
+            CTankerLib::get()
+                .verify_provisional_identity(self.ctanker, verif_wrapper.as_cverification())
                 .await
         }
     }
@@ -149,12 +158,9 @@ impl Core {
     ) -> Result<Option<String>, Error> {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
-            ctanker::set_verification_method(
-                self.ctanker,
-                verif_wrapper.as_cverification(),
-                options,
-            )
-            .await
+            CTankerLib::get()
+                .set_verification_method(self.ctanker, verif_wrapper.as_cverification(), options)
+                .await
         }
     }
 
@@ -162,7 +168,11 @@ impl Core {
     ///
     /// The Tanker status must be either `IdentityVerificationNeeded` or `Ready`.
     pub async fn get_verification_methods(&self) -> Result<Vec<VerificationMethod>, Error> {
-        unsafe { ctanker::get_verification_methods(self.ctanker).await }
+        unsafe {
+            CTankerLib::get()
+                .get_verification_methods(self.ctanker)
+                .await
+        }
     }
 
     /// Generates a verification key and returns its private part, which is required to verify the user's identity.
@@ -174,7 +184,11 @@ impl Core {
     /// **Warning**: This is a low level function for specific use-cases only, as it can have severe security implications.
     ///             Use it only if high-level identity verification doesn't fit your needs, and you fully understand how it works. Don't hesitate to contact Tanker for help.
     pub async fn generate_verification_key(&self) -> Result<String, Error> {
-        unsafe { ctanker::generate_verification_key(self.ctanker).await }
+        unsafe {
+            CTankerLib::get()
+                .generate_verification_key(self.ctanker)
+                .await
+        }
     }
 
     /// Encrypts data and returns the resulting encrypted resource. It will be shared with individual users and groups specified in the [EncryptionOptions](EncryptionOptions).
@@ -189,12 +203,16 @@ impl Core {
         data: T,
         options: &EncryptionOptions,
     ) -> Result<Vec<u8>, Error> {
-        unsafe { ctanker::encrypt(self.ctanker, data.as_ref(), options).await }
+        unsafe {
+            CTankerLib::get()
+                .encrypt(self.ctanker, data.as_ref(), options)
+                .await
+        }
     }
 
     /// Decrypts a resource and returns the clear data.
     pub async fn decrypt<T: AsRef<[u8]>>(&self, data: T) -> Result<Vec<u8>, Error> {
-        unsafe { ctanker::decrypt(self.ctanker, data.as_ref()).await }
+        unsafe { CTankerLib::get().decrypt(self.ctanker, data.as_ref()).await }
     }
 
     /// Creates an encryption stream wrapping `data`.
@@ -223,7 +241,7 @@ impl Core {
     /// Retrieves an encrypted resource's ID.
     /// The resource ID can then be used to call [share](Self::share).
     pub fn get_resource_id(&self, data: &[u8]) -> Result<String, Error> {
-        block_on(ctanker::get_resource_id(data))
+        block_on(CTankerLib::get().get_resource_id(data))
     }
 
     /// Shares resources with users and groups.
@@ -248,7 +266,11 @@ impl Core {
             .into_iter()
             .map(|r| CString::new(r.as_ref()).unwrap())
             .collect();
-        unsafe { ctanker::share(self.ctanker, &resource_ids, options).await }
+        unsafe {
+            CTankerLib::get()
+                .share(self.ctanker, &resource_ids, options)
+                .await
+        }
     }
 
     /// Creates a group with users' public identities, and returns its ID.
@@ -265,7 +287,7 @@ impl Core {
             .into_iter()
             .map(|r| CString::new(r.as_ref()).unwrap())
             .collect();
-        unsafe { ctanker::create_group(self.ctanker, &members).await }
+        unsafe { CTankerLib::get().create_group(self.ctanker, &members).await }
     }
 
     /// Add or remove members from an existing group.
@@ -299,7 +321,8 @@ impl Core {
             .map(|r| CString::new(r.as_ref()).unwrap())
             .collect();
         unsafe {
-            ctanker::update_group_members(self.ctanker, &group_id, &users_to_add, &users_to_remove)
+            CTankerLib::get()
+                .update_group_members(self.ctanker, &group_id, &users_to_add, &users_to_remove)
                 .await
         }
     }
@@ -309,7 +332,11 @@ impl Core {
     /// The Tanker status must be `Ready`.
     #[deprecated(since = "2.8.0")]
     pub async fn revoke_device(&self, device_id: &str) -> Result<(), Error> {
-        unsafe { ctanker::revoke_device(self.ctanker, device_id).await }
+        unsafe {
+            CTankerLib::get()
+                .revoke_device(self.ctanker, device_id)
+                .await
+        }
     }
 
     /// Create an encryption session that will allow performing multiple encryption operations with a reduced number of keys.
@@ -320,7 +347,11 @@ impl Core {
         &self,
         options: &EncryptionOptions,
     ) -> Result<EncryptionSession, Error> {
-        let ptr = unsafe { ctanker::encryption_session_open(self.ctanker, options).await? };
+        let ptr = unsafe {
+            CTankerLib::get()
+                .encryption_session_open(self.ctanker, options)
+                .await?
+        };
         Ok(unsafe { EncryptionSession::new(ptr) })
     }
 
@@ -328,12 +359,12 @@ impl Core {
     ///
     /// This function is only useful in the specific case described in the [verification by passphrase guide](https://docs.tanker.io/latest/guides/verification-passphrase#using_the_application_password_as_a_passphrase).
     pub fn prehash_password(password: &str) -> Result<String, Error> {
-        block_on(ctanker::prehash_password(password))
+        block_on(CTankerLib::get().prehash_password(password))
     }
 }
 
 impl Drop for Core {
     fn drop(&mut self) {
-        block_on(unsafe { ctanker::destroy(self.ctanker) });
+        block_on(unsafe { CTankerLib::get().destroy(self.ctanker) });
     }
 }

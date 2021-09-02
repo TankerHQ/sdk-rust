@@ -1,4 +1,4 @@
-use crate::ctanker::{self, CEncSessPtr};
+use crate::ctanker::{self, CEncSessPtr, CTankerLib};
 use crate::Error;
 use futures::executor::block_on;
 use futures::AsyncRead;
@@ -17,7 +17,11 @@ impl EncryptionSession {
 
     /// Encrypt some data as part of the encryption session.
     pub async fn encrypt<T: AsRef<[u8]>>(&self, data: T) -> Result<Vec<u8>, Error> {
-        unsafe { ctanker::encryption_session_encrypt(self.csess, data.as_ref()).await }
+        unsafe {
+            CTankerLib::get()
+                .encryption_session_encrypt(self.csess, data.as_ref())
+                .await
+        }
     }
 
     /// Creates an encryption stream bound to this encryption session wrapping `data`.
@@ -31,13 +35,13 @@ impl EncryptionSession {
     /// Get the resource ID of this encryption session that can be used to call [share](crate::Core::share),
     /// which will share all the data encrypted within this session.
     pub fn get_resource_id(&self) -> String {
-        block_on(ctanker::encryption_session_get_resource_id(self.csess))
+        block_on(CTankerLib::get().encryption_session_get_resource_id(self.csess))
     }
 }
 
 impl Drop for EncryptionSession {
     fn drop(&mut self) {
         // Ignore errors, nothing we can do
-        let _ = unsafe { block_on(ctanker::encryption_session_close(self.csess)) };
+        let _ = unsafe { block_on(CTankerLib::get().encryption_session_close(self.csess)) };
     }
 }

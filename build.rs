@@ -8,15 +8,6 @@ use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
 
-const MSVC_TRIPLET: &str = "x86_64-pc-windows-msvc";
-
-fn tanker_lib_filename(triplet: &str) -> &'static str {
-    match triplet {
-        MSVC_TRIPLET => "ctanker.lib",
-        _ => "libctanker.a",
-    }
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let target_triplet = std::env::var("TARGET")?;
     let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").unwrap();
@@ -24,7 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     bindings_folder.push("native");
     bindings_folder.push(&target_triplet);
 
-    let lib_filename = tanker_lib_filename(&target_triplet);
+    let lib_filename = "libctanker.a";
     if !bindings_folder.exists() {
         panic!(
             "Target platform {} is not supported ({} does not exist)",
@@ -32,6 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             bindings_folder.to_string_lossy()
         );
     }
+    #[cfg(target_family = "unix")]
     if !bindings_folder.join(lib_filename).exists() {
         panic!(
             "Couldn't find {} in {}",
@@ -78,17 +70,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!();
 
     // Tell cargo to link with our native library
-    print!("cargo:rustc-link-search=");
-    std::io::stdout().write_all(bindings_folder).unwrap();
-    println!();
-    println!("cargo:rustc-link-lib=static=ctanker",);
-    match target_triplet.as_str() {
-        "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
-        "x86_64-apple-darwin" => {
-            println!("cargo:rustc-link-lib=dylib=c++");
-            println!("cargo:rustc-link-lib=dylib=c++abi");
+    #[cfg(target_family = "unix")]
+    {
+        print!("cargo:rustc-link-search=");
+        std::io::stdout().write_all(bindings_folder).unwrap();
+        println!();
+        println!("cargo:rustc-link-lib=static=ctanker",);
+        match target_triplet.as_str() {
+            "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
+            "x86_64-apple-darwin" => {
+                println!("cargo:rustc-link-lib=dylib=c++");
+                println!("cargo:rustc-link-lib=dylib=c++abi");
+            }
+            _ => (),
         }
-        _ => (),
     }
 
     #[cfg(target_family = "windows")]

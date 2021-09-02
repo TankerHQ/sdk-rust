@@ -1,4 +1,5 @@
 use super::bindings::tanker_future;
+use crate::ctanker::*;
 use crate::Error;
 use futures::channel::oneshot;
 use std::ffi::{c_void, CStr};
@@ -33,8 +34,8 @@ impl<T> CFuture<T> {
 
     unsafe fn get_result(cfut: *mut tanker_future) -> Option<*mut T> {
         unsafe {
-            if super::tanker_future_is_ready(cfut) {
-                Some(super::tanker_future_get_voidptr(cfut) as *mut T)
+            if tanker_call_ext!(tanker_future_is_ready(cfut)) {
+                Some(tanker_call_ext!(tanker_future_get_voidptr(cfut)) as *mut T)
             } else {
                 None
             }
@@ -43,11 +44,11 @@ impl<T> CFuture<T> {
 
     unsafe fn get_error(cfut: *mut tanker_future) -> Option<Error> {
         unsafe {
-            if super::tanker_future_has_error(cfut) == 0 {
+            if tanker_call_ext!(tanker_future_has_error(cfut)) == 0 {
                 return None;
             }
 
-            let cerror = super::tanker_future_get_error(cfut);
+            let cerror = tanker_call_ext!(tanker_future_get_error(cfut));
             let code = (*cerror).code.into();
             let msg = CStr::from_ptr((*cerror).message);
             let msg = msg.to_str().expect("Tanker errors are UTF-8").to_string();
@@ -88,7 +89,7 @@ impl<T> CFuture<T> {
 
 impl<T> Drop for CFuture<T> {
     fn drop(&mut self) {
-        unsafe { super::tanker_future_destroy(self.cfut) }
+        unsafe { tanker_call_ext!(tanker_future_destroy(self.cfut)) }
     }
 }
 
@@ -137,9 +138,12 @@ impl<T> Future for CFuture<T> {
 
         // SAFETY: Called once on a fresh cfut because we set self.receiver above
         unsafe {
-            let waker_fut =
-                super::tanker_future_then(self.cfut, Some(Self::waker_callback), ctx_ptr);
-            super::tanker_future_destroy(waker_fut);
+            let waker_fut = tanker_call_ext!(tanker_future_then(
+                self.cfut,
+                Some(Self::waker_callback),
+                ctx_ptr
+            ));
+            tanker_call_ext!(tanker_future_destroy(waker_fut));
         }
 
         Poll::Pending
