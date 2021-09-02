@@ -115,7 +115,6 @@ def bind_gen(*, header_source: Path, output_file: Path, include_path: Path) -> N
 class Builder:
     def __init__(self, *, src_path: Path, tanker_source: TankerSource, profile: str):
         self.src_path = src_path
-        self.target_dir = self.src_path / "target"
         self.profile = profile
         self.tanker_source = tanker_source
         self.platform = tankerci.conan.get_profile_key("settings.os", profile)
@@ -244,7 +243,7 @@ class Builder:
             tanker_deployed_ref = "tanker/latest-stable@"
         tankerci.conan.install_tanker_source(
             self.tanker_source,
-            output_path=self.src_path / "conan" / "out",
+            output_path=Path("conan") / "out",
             profiles=[self.profile],
             update=update,
             tanker_deployed_ref=tanker_deployed_ref,
@@ -262,19 +261,11 @@ class Builder:
                     "build-std",
                     "--target",
                     self.target_triplet,
-                    "--target-dir",
-                    self.target_dir,
                     cwd=self.src_path,
                 )
             else:
                 tankerci.run(
-                    "cargo",
-                    "build",
-                    "--target",
-                    self.target_triplet,
-                    "--target-dir",
-                    self.target_dir,
-                    cwd=self.src_path,
+                    "cargo", "build", "--target", self.target_triplet, cwd=self.src_path
                 )
             ui.info(self.profile, "is a cross-compiled target, skipping tests")
             return
@@ -290,14 +281,13 @@ class Builder:
             "unknown-lints",
             cwd=self.src_path,
         )
+        if self._is_windows_target:
+            shutil.copy(
+                Path("native") / self.target_triplet / "ctanker.dll",
+                Path("target") / "debug/deps",
+            )
         tankerci.run(
-            "cargo",
-            "test",
-            "--target",
-            self.target_triplet,
-            "--target-dir",
-            self.target_dir,
-            cwd=self.src_path,
+            "cargo", "test", "--target", self.target_triplet, cwd=self.src_path
         )
 
 
@@ -313,17 +303,15 @@ def build_and_test(
         os.environ["RUSTFLAGS"] = "-D warnings"
     for profile in profiles:
         builder = Builder(
-            src_path=Path.cwd() / "sdk", tanker_source=tanker_source, profile=profile
+            src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
         )
         builder.prepare(update, tanker_ref)
         if test:
             builder.test()
-    tankerci.run("cargo", "build", cwd=Path.cwd() / "build-setup")
 
 
 def deploy(args: argparse.Namespace) -> None:
-    native_dir = Path.cwd() / "sdk" / "native"
-    compiled_targets = [p.name for p in native_dir.iterdir() if p.is_dir()]
+    compiled_targets = [p.name for p in Path("native").iterdir() if p.is_dir()]
     missing_targets = [
         target for target in TARGET_LIST if target not in compiled_targets
     ]
@@ -334,8 +322,7 @@ def deploy(args: argparse.Namespace) -> None:
     registry = args.registry
     tankerci.bump_files(version)
 
-    tankerci.run("cargo", "publish", "--allow-dirty", f"--registry={registry}", cwd="sdk")
-    tankerci.run("cargo", "publish", f"--registry={registry}", cwd="build-setup")
+    tankerci.run("cargo", "publish", "--allow-dirty", f"--registry={registry}")
 
 
 def main() -> None:
