@@ -51,16 +51,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
     let bindings_folder = if target_family.contains("unix") {
-        let bindings_folder = bindings_folder.as_os_str().as_bytes();
-        assert!(!bindings_folder.contains(&b'='));
-        assert!(!bindings_folder.contains(&b'\0'));
-        assert!(!bindings_folder.contains(&b'\n'));
-        bindings_folder
+        bindings_folder.as_os_str().to_string_lossy()
     } else if target_family.contains("windows") {
-        bindings_folder.as_os_str().as_bytes()
+        bindings_folder.to_string_lossy()
     } else {
         panic!("target not valid");
     };
+    let bindings_folder = bindings_folder.as_bytes();
+
+    if target_family.contains("unix") {
+        assert!(!bindings_folder.contains(&b'='));
+        assert!(!bindings_folder.contains(&b'\0'));
+        assert!(!bindings_folder.contains(&b'\n'));
+    }
+
     // Export an env var so we can include ctanker.rs in the source code
     print!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER=");
     std::io::stdout().write_all(bindings_folder).unwrap();
