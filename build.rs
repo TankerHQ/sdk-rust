@@ -1,15 +1,12 @@
 use std::error::Error;
 use std::io::Write;
-use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
-use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let target_triplet = std::env::var("TARGET")?;
     let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").unwrap();
-    let mut bindings_folder = PathBuf::from(manifest_dir);
+    let mut bindings_folder = std::path::PathBuf::from(manifest_dir);
     bindings_folder.push("native");
     bindings_folder.push(&target_triplet);
 
@@ -51,6 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
     let bindings_folder = if target_family.contains("unix") {
+        use std::os::unix::ffi::OsStrExt;
         bindings_folder.as_os_str().to_string_lossy()
     } else if target_family.contains("windows") {
         bindings_folder.to_string_lossy()
@@ -94,9 +92,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
 
         let tankersdk_bin_path = format!("native/{}", target_triplet);
-        let tankersdk_bin_path = Path::new(&tankersdk_bin_path);
+        let tankersdk_bin_path = std::path::Path::new(&tankersdk_bin_path);
         let unit_test_path = format!("target/{}/{}/deps/", target_triplet, build_type);
-        let unit_test_path = Path::new(&unit_test_path);
+        let unit_test_path = std::path::Path::new(&unit_test_path);
         std::fs::create_dir_all(unit_test_path)?;
         let target_path = unit_test_path.join("ctanker.dll");
         if !target_path.exists() {
