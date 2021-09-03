@@ -235,6 +235,8 @@ class Builder:
             include_path=include_path,
             dynamic_loading=self._is_windows_target,
         )
+        if self._is_windows_target:
+            shutil.copyfile(native_path / "ctanker.rs", mingw_path / "ctanker.rs")
 
     def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
         tanker_deployed_ref = tanker_ref
