@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::path::Path;
 use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
@@ -10,6 +11,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     bindings_folder.push("native");
     bindings_folder.push(&target_triplet);
 
+    let target_family = std::env::var("CARGO_CFG_TARGET_FAMILY")?;
+
     let lib_filename = "libctanker.a";
     if !bindings_folder.exists() {
         panic!(
@@ -18,8 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             bindings_folder.to_string_lossy()
         );
     }
-    #[cfg(target_family = "unix")]
-    if !bindings_folder.join(lib_filename).exists() {
+    if target_family.contains("unix") && !bindings_folder.join(lib_filename).exists() {
         panic!(
             "Couldn't find {} in {}",
             lib_filename,
@@ -57,8 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!();
 
     // Tell cargo to link with our native library
-    #[cfg(target_family = "unix")]
-    {
+    if target_family.contains("unix") {
         println!("cargo:rustc-link-search={}", bindings_folder);
         println!("cargo:rustc-link-lib=static=ctanker",);
         match target_triplet.as_str() {
@@ -71,8 +72,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    #[cfg(target_family = "windows")]
-    {
+    if target_family.contains("windows") {
         let build_type = if cfg!(debug_assertions) {
             "debug"
         } else {
