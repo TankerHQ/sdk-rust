@@ -1,8 +1,6 @@
 use std::error::Error;
 use std::io::Write;
-#[cfg(target_family = "unix")]
 use std::os::unix::ffi::OsStrExt;
-#[cfg(target_family = "windows")]
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -15,6 +13,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     bindings_folder.push("native");
     bindings_folder.push(&target_triplet);
 
+    let target_family = std::env::var("CARGO_CFG_TARGET_FAMILY")?;
+
     let lib_filename = "libctanker.a";
     if !bindings_folder.exists() {
         panic!(
@@ -23,8 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             bindings_folder.to_string_lossy()
         );
     }
-    #[cfg(target_family = "unix")]
-    if !bindings_folder.join(lib_filename).exists() {
+    if target_family.contains("unix") && !bindings_folder.join(lib_filename).exists() {
         panic!(
             "Couldn't find {} in {}",
             lib_filename,
@@ -51,27 +50,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
-    #[cfg(target_family = "unix")]
-    let bindings_folder = bindings_folder.as_os_str().as_bytes();
-    #[cfg(target_family = "unix")]
-    {
+    let bindings_folder = if target_family.contains("unix") {
+        let bindings_folder = bindings_folder.as_os_str().as_bytes();
         assert!(!bindings_folder.contains(&b'='));
         assert!(!bindings_folder.contains(&b'\0'));
         assert!(!bindings_folder.contains(&b'\n'));
-    }
-
-    #[cfg(target_family = "windows")]
-    let bindings_folder = bindings_folder.to_string_lossy();
-    #[cfg(target_family = "windows")]
-    let bindings_folder = bindings_folder.as_bytes();
+        bindings_folder
+    } else if target_family.contains("windows") {
+        bindings_folder.as_os_str().as_bytes()
+    } else {
+        panic!("target not valid");
+    };
     // Export an env var so we can include ctanker.rs in the source code
     print!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER=");
     std::io::stdout().write_all(bindings_folder).unwrap();
     println!();
 
     // Tell cargo to link with our native library
-    #[cfg(target_family = "unix")]
-    {
+    if target_family.contains("unix") {
         print!("cargo:rustc-link-search=");
         std::io::stdout().write_all(bindings_folder).unwrap();
         println!();
@@ -86,8 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    #[cfg(target_family = "windows")]
-    {
+    if target_family.contains("windows") {
         let build_type = if cfg!(debug_assertions) {
             "debug"
         } else {
