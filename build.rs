@@ -47,16 +47,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
-    let bindings_folder = if target_family.contains("unix") {
-        use std::os::unix::ffi::OsStrExt;
-        bindings_folder.as_os_str().to_string_lossy()
-    } else if target_family.contains("windows") {
-        bindings_folder.to_string_lossy()
-    } else {
-        panic!("target not valid");
-    };
+    let bindings_folder = bindings_folder.to_string_lossy().into_owned();
     let bindings_folder = bindings_folder.as_bytes();
-
     if target_family.contains("unix") {
         assert!(!bindings_folder.contains(&b'='));
         assert!(!bindings_folder.contains(&b'\0'));
