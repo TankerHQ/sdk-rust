@@ -1,9 +1,4 @@
 use std::error::Error;
-use std::io::Write;
-#[cfg(target_family = "unix")]
-use std::os::unix::ffi::OsStrExt;
-#[cfg(target_family = "windows")]
-use std::path::Path;
 use std::path::PathBuf;
 
 const BINDGEN_OUTPUT_FILENAME: &str = "ctanker.rs";
@@ -50,31 +45,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         lib_filename
     );
 
-    // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
-    #[cfg(target_family = "unix")]
-    let bindings_folder = bindings_folder.as_os_str().as_bytes();
-    #[cfg(target_family = "unix")]
-    {
-        assert!(!bindings_folder.contains(&b'='));
-        assert!(!bindings_folder.contains(&b'\0'));
-        assert!(!bindings_folder.contains(&b'\n'));
-    }
-
-    #[cfg(target_family = "windows")]
     let bindings_folder = bindings_folder.to_string_lossy();
-    #[cfg(target_family = "windows")]
-    let bindings_folder = bindings_folder.as_bytes();
+
+    // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
+    assert!(!bindings_folder.contains(&"="));
+    assert!(!bindings_folder.contains(&"\0"));
+    assert!(!bindings_folder.contains(&"\n"));
+
     // Export an env var so we can include ctanker.rs in the source code
-    print!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER=");
-    std::io::stdout().write_all(bindings_folder).unwrap();
+    println!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER={}", bindings_folder);
     println!();
 
     // Tell cargo to link with our native library
     #[cfg(target_family = "unix")]
     {
-        print!("cargo:rustc-link-search=");
-        std::io::stdout().write_all(bindings_folder).unwrap();
-        println!();
+        println!("cargo:rustc-link-search={}", bindings_folder);
         println!("cargo:rustc-link-lib=static=ctanker",);
         match target_triplet.as_str() {
             "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
