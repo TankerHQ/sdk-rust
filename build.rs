@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             bindings_folder.to_string_lossy()
         );
     }
-    if target_family == "unix" && !bindings_folder.join(lib_filename).exists() {
+    if target_family != "windows" && !bindings_folder.join(lib_filename).exists() {
         panic!(
             "Couldn't find {} in {}",
             lib_filename,
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER={}", bindings_folder);
 
     // Tell cargo to link with our native library
-    if target_family == "unix" {
+    if target_family != "windows" {
         println!("cargo:rustc-link-search={}", bindings_folder);
         println!("cargo:rustc-link-lib=static=ctanker",);
         match target_triplet.as_str() {
