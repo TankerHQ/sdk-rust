@@ -18,36 +18,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         panic!(
             "Target platform {} is not supported ({} does not exist)",
             target_triplet,
-            bindings_folder.to_string_lossy()
+            bindings_folder.display()
         );
     }
-    if target_family == "unix" && !bindings_folder.join(lib_filename).exists() {
+    if target_family != "windows" && !bindings_folder.join(lib_filename).exists() {
         panic!(
             "Couldn't find {} in {}",
             lib_filename,
-            bindings_folder.to_string_lossy()
+            bindings_folder.display()
         );
     }
     if !bindings_folder.join(BINDGEN_OUTPUT_FILENAME).exists() {
         panic!(
             "Couldn't find the bindgen-generated {} in {}",
             BINDGEN_OUTPUT_FILENAME,
-            bindings_folder.to_string_lossy()
+            bindings_folder.display()
         );
     }
 
-    println!(
-        "cargo:rerun-if-changed={}/{}",
-        bindings_folder.to_string_lossy(),
-        BINDGEN_OUTPUT_FILENAME
-    );
-    println!(
-        "cargo:rerun-if-changed={}/{}",
-        bindings_folder.to_string_lossy(),
-        lib_filename
-    );
+    let bindings_folder = bindings_folder.to_str().expect("Invalid character in path");
 
-    let bindings_folder = bindings_folder.to_string_lossy();
+    println!(
+        "cargo:rerun-if-changed={}/{}",
+        bindings_folder, BINDGEN_OUTPUT_FILENAME
+    );
+    println!(
+        "cargo:rerun-if-changed={}/{}",
+        bindings_folder, lib_filename
+    );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
     assert!(!bindings_folder.contains(&"="));
@@ -58,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER={}", bindings_folder);
 
     // Tell cargo to link with our native library
-    if target_family == "unix" {
+    if target_family != "windows" {
         println!("cargo:rustc-link-search={}", bindings_folder);
         println!("cargo:rustc-link-lib=static=ctanker",);
         match target_triplet.as_str() {
