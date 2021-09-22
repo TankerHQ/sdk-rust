@@ -25,7 +25,6 @@ use crate::ctanker::*;
 use crate::error::Error;
 
 use ::core::pin::Pin;
-use async_channel::{bounded, Receiver, Sender, TryRecvError};
 use futures::executor::block_on;
 use futures::future::{select, Either};
 use futures::io::{AsyncRead, AsyncReadExt};
@@ -35,6 +34,7 @@ use futures::FutureExt;
 use std::cmp::min;
 use std::future::Future;
 use std::sync::Mutex;
+use tokio::sync::mpsc::{channel, error::TryRecvError, Receiver, Sender};
 
 #[derive(Debug, Clone)]
 struct ReadOperation {
@@ -63,7 +63,7 @@ struct TankerStream<UserStream: AsyncRead + Unpin> {
 
 impl<UserStream: AsyncRead + Unpin> TankerStream<UserStream> {
     fn new() -> Self {
-        let (sender, receiver) = bounded(1);
+        let (sender, receiver) = channel(1);
         TankerStream {
             user_stream: None,
             tanker_stream_handle: std::ptr::null_mut(),
@@ -190,7 +190,7 @@ impl<UserStream: AsyncRead + Unpin> AsyncRead for TankerStream<UserStream> {
                     );
                     self.read_operation = Some(read_operation);
                 }
-                Err(TryRecvError::Closed) => {
+                Err(TryRecvError::Disconnected) => {
                     panic!("error reading channel: closed");
                 }
                 Err(TryRecvError::Empty) => {} // Channel still open, but no message
