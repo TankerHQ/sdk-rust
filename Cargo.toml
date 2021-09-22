@@ -11,13 +11,11 @@ include = ["native", "src", "tests", "build.rs"]
 futures = "0.3"
 num_enum = "0.5"
 lazy_static = "1.4"
-tokio = { version = "1.3", features = ["sync"] }
-# Tokio's mpsc::sync channel has a bug in try_recv(), in the meantime we use async_channel
-async-channel = "1.6.1"
+tokio = { version = "1.12", features = ["sync"] }
 libloading = "0.7.0"
 
 [dev-dependencies]
-tokio = { version = "1.3", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 serde_json = "1.0"
 double-checked-cell-async = "2.0.2"
