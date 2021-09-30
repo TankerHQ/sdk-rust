@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /rust.yml
-  ref: 2021-09-02-1
+  ref: 2021-10-04-177
 
 check/native-from-sources/linux:
   extends:
@@ -59,11 +59,17 @@ check/native-from-sources/ios/arm:
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile ios-armv8-release --profile ios-simulator-armv8-release
 
+.rules/check/deployed-native:
+  rules:
+    - !reference [.rules/web/auto, rules]
+    - !reference [.rules/mr/manual, rules]
+    - !reference [.rules/deploy-pipeline, rules]
+
 check/deployed-native/linux:
   extends:
     - .check
     - .tags/linux
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile linux-release
@@ -72,7 +78,7 @@ check/deployed-native/windows:
   extends:
     - .check
     - .tags/windows
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile vs2019-release-shared
@@ -81,7 +87,7 @@ check/deployed-native/android:
   extends:
     - .check
     - .tags/linux
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
@@ -90,7 +96,7 @@ check/deployed-native/macos/x86_64:
   extends:
     - .check
     - .tags/macos/x86_64
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-x86_64-release
@@ -99,7 +105,7 @@ check/deployed-native/macos/arm:
   extends:
     - .check
     - .tags/macos/arm
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-armv8-release
@@ -108,7 +114,7 @@ check/deployed-native/ios/x86_64:
   extends:
     - .check
     - .tags/macos/x86_64
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release --profile ios-simulator-x86_64-release
@@ -117,7 +123,7 @@ check/deployed-native/ios/arm:
   extends:
     - .check
     - .tags/macos/arm
-    - .rules/deployed-native/release-artifacts
+    - .rules/check/deployed-native
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release --profile ios-simulator-armv8-release
