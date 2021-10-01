@@ -10,6 +10,10 @@ pub struct Core {
     ctanker: ctanker::CTankerPtr,
 }
 
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for Core {}
+unsafe impl Sync for Core {}
+
 impl Core {
     /// Creates a Tanker Core session with [Status](enum.Status.html) `Stopped`.
     ///
