@@ -25,7 +25,7 @@ check/native-from-sources/android:
     - .tags/linux
     - .rules/native-from-sources
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile android-armv8-release-static --profile android-x86_64-release-static --profile android-x86-release-static --profile android-armv7-release-static
+    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
 
 check/native-from-sources/macos/x86_64:
   extends:
