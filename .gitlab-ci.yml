@@ -15,7 +15,7 @@ workflow:
     # forbid stable releases on registry tanker-dev
     - if: $CI_PIPELINE_SOURCE == "web" && ($SDK_RUST_RELEASE_VERSION =~ /\A\d+\.\d+\.\d+\z/ && $SDK_RUST_CARGO_REGISTRY != "tanker")
       when: never
-    - if: $SDK_NATIVE_LATEST_CONAN_REFERENCE !~ /\Atanker\/(latest-stable@|(\d+\.\d+\.\d+(-(alpha|beta)\d+)?@(\w+\/\w+)?))\z/
+    - if: !reference [.if-invalid-native-conan-reference, if]
       when: never
     # allow everything else
     - when: always
