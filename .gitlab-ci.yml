@@ -252,6 +252,69 @@ check/downstream/macos/arm:
 # deploy stage #
 ################
 
+build-artifacts/linux:
+  stage: deploy
+  extends:
+    - .tags/linux
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile linux-release
+
+build-artifacts/windows:
+  stage: deploy
+  extends:
+    - .tags/windows
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile vs2019-release-shared
+
+build-artifacts/android:
+  stage: deploy
+  extends:
+    - .tags/linux
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+
+build-artifacts/macos/x86_64:
+  stage: deploy
+  extends:
+    - .tags/macos/x86_64
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-x86_64-release
+
+build-artifacts/macos/arm:
+  stage: deploy
+  extends:
+    - .tags/macos/arm
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-armv8-release
+
+build-artifacts/ios/x86_64:
+  stage: deploy
+  extends:
+    - .tags/macos/x86_64
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+
+build-artifacts/ios/arm:
+  stage: deploy
+  extends:
+    - .tags/macos/arm
+    - .rules/deploy/rust
+    - .release-artifacts
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+
 deploy:
   stage: deploy
   extends:
@@ -260,6 +323,15 @@ deploy:
   script:
     - poetry run python run-ci.py reset-branch $UPSTREAM_BRANCH_NAME
     - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION --registry $SDK_RUST_CARGO_REGISTRY
+  needs:
+    - build-artifacts/linux
+    - build-artifacts/windows
+    - build-artifacts/android
+    - build-artifacts/macos/x86_64
+    - build-artifacts/macos/arm
+    - build-artifacts/ios/x86_64
+    - build-artifacts/ios/arm
+
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
