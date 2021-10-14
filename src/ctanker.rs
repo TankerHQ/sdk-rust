@@ -411,7 +411,7 @@ impl CTankerLib {
         };
         let mut decrypted = Vec::with_capacity(decrypted_size);
 
-        let fut = unsafe {
+        let clear_size = unsafe {
             CFuture::new(tanker_call!(
                 self,
                 tanker_decrypt(
@@ -421,11 +421,11 @@ impl CTankerLib {
                     data.len() as u64,
                 )
             ))
-        };
-        fut.await?;
+        }
+        .await?;
 
         // SAFETY: If tanker_decrypt succeeds, it guarantees to have written decrypted_size bytes
-        unsafe { decrypted.set_len(decrypted_size) };
+        unsafe { decrypted.set_len(clear_size) };
 
         Ok(decrypted)
     }
