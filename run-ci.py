@@ -264,7 +264,7 @@ class Builder:
                 cwd=self.src_path,
             )
 
-    def test(self) -> None:
+    def build(self) -> None:
         if not self._is_host_target:
             if self.target_triplet == "aarch64-apple-ios-sim":
                 tankerci.run(
@@ -277,11 +277,16 @@ class Builder:
                     self.target_triplet,
                     cwd=self.src_path,
                 )
-            else:
-                self._cargo("build")
+                return
+        self._cargo("build")
 
+    def test(self) -> None:
+        self.build()
+
+        if not self._is_host_target:
             ui.info(self.profile, "is a cross-compiled target, skipping tests")
             return
+
         tankerci.run("cargo", "fmt", "--", "--check", cwd=self.src_path)
         tankerci.run(
             "cargo",
@@ -302,13 +307,25 @@ class Builder:
         self._cargo("test")
 
 
-def build_and_test(
+def prepare(
     tanker_source: TankerSource,
     profiles: List[str],
     *,
     update: bool = False,
-    test: bool = True,
     tanker_ref: Optional[str] = None,
+):
+    for profile in profiles:
+        builder = Builder(
+            src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
+        )
+        builder.prepare(update, tanker_ref)
+
+
+def build(
+    tanker_source: TankerSource,
+    profiles: List[str],
+    *,
+    test: bool = False,
 ) -> None:
     if os.environ.get("CI"):
         os.environ["RUSTFLAGS"] = "-D warnings"
@@ -316,9 +333,11 @@ def build_and_test(
         builder = Builder(
             src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
         )
-        builder.prepare(update, tanker_ref)
+        # build is implied with test
         if test:
             builder.test()
+        else:
+            builder.build()
 
 
 def deploy(args: argparse.Namespace) -> None:
@@ -346,17 +365,18 @@ def main() -> None:
     )
     subparsers = parser.add_subparsers(title="subcommands", dest="command")
 
-    build_parser = subparsers.add_parser("build-and-test")
+    build_parser = subparsers.add_parser("build")
     build_parser.add_argument(
         "--profile", dest="profiles", action="append", required=True
     )
-    build_parser.add_argument("--tanker-ref")
     build_parser.add_argument(
         "--use-tanker",
         type=TankerSource,
         default=TankerSource.EDITABLE,
         dest="tanker_source",
     )
+    build_parser.add_argument("--test", action="store_true")
+
     prepare_parser = subparsers.add_parser("prepare")
     prepare_parser.add_argument(
         "--profile", dest="profiles", action="append", required=True
@@ -388,15 +408,18 @@ def main() -> None:
         tankerci.conan.set_home_isolation()
         tankerci.conan.update_config()
 
-    if args.command == "build-and-test":
-        build_and_test(args.tanker_source, args.profiles, tanker_ref=args.tanker_ref)
+    if args.command == "build":
+        build(
+            args.tanker_source,
+            args.profiles,
+            test=args.test,
+        )
     elif args.command == "deploy":
         deploy(args)
     elif args.command == "prepare":
-        build_and_test(
+        prepare(
             args.tanker_source,
             args.profiles,
-            test=False,
             update=args.update,
             tanker_ref=args.tanker_ref,
         )

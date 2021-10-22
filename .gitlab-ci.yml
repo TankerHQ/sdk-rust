@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /common.yml
-  ref: 2021-10-04-177
+  ref: 2021-10-13-215
 
 ############
 # Workflow #
@@ -35,6 +35,7 @@ default:
 ##########
 
 stages:
+  - build-native
   - check
   - deploy
 
@@ -60,193 +61,274 @@ stages:
     paths:
       - native/
 
-check/native-from-sources/linux:
-  stage: check
+############
+# profiles #
+############
+
+.profiles/linux:
   extends:
     - .tags/linux
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile linux-release
+  variables:
+    TANKER_PROFILES: --profile linux-release
 
-check/native-from-sources/windows:
-  stage: check
+.profiles/windows:
   extends:
     - .tags/windows
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile vs2019-release-shared
+  before_script:
+    # Powershell doesn't split env variable when expanding it.
+    # So, we are using the native syntax to create an array, which will be correctly expanded.
+    - $TANKER_PROFILES = "--profile", "vs2019-release-shared"
 
-check/native-from-sources/android:
-  stage: check
+.profiles/android:
   extends:
     - .tags/linux
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+  variables:
+    TANKER_PROFILES: --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
 
-check/native-from-sources/macos/x86_64:
-  stage: check
+.profiles/macos/x86_64:
   extends:
     - .tags/macos/x86_64
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile macos-x86_64-release
+  variables:
+    TANKER_PROFILES: --profile macos-x86_64-release
 
-check/native-from-sources/macos/arm:
-  stage: check
+.profiles/macos/arm:
   extends:
     - .tags/macos/arm
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile macos-armv8-release
+  variables:
+    TANKER_PROFILES: --profile macos-armv8-release
 
-check/native-from-sources/ios/x86_64:
-  stage: check
+.profiles/ios/x86_64:
   extends:
     - .tags/macos/x86_64
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+  variables:
+    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
 
-check/native-from-sources/ios/arm:
-  stage: check
+.profiles/ios/arm:
   extends:
     - .tags/macos/arm
-    - .rules/native-from-sources
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=same-as-branch --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+  variables:
+    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
 
-.rules/check/deployed-native:
+######################
+# build-native stage #
+######################
+
+.rules/build-native:
   rules:
     - !reference [.rules/web/auto, rules]
     - !reference [.rules/mr/manual, rules]
     - !reference [.rules/deploy-pipeline, rules]
 
-check/deployed-native/linux:
-  stage: check
+.build-native:
+  stage: build-native
   extends:
-    - .tags/linux
-    - .rules/check/deployed-native
+    - .rules/build-native
     - .release-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile linux-release
+    - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE $TANKER_PROFILES
+
+build-native/linux:
+  extends:
+    - .profiles/linux
+    - .build-native
+
+build-native/windows:
+  extends:
+    - .profiles/windows
+    - .build-native
+
+build-native/android:
+  extends:
+    - .profiles/android
+    - .build-native
+
+build-native/macos/x86_64:
+  extends:
+    - .profiles/macos/x86_64
+    - .build-native
+
+build-native/macos/arm:
+  extends:
+    - .profiles/macos/arm
+    - .build-native
+
+build-native/ios/x86_64:
+  extends:
+    - .profiles/ios/x86_64
+    - .build-native
+
+build-native/ios/arm:
+  extends:
+    - .profiles/ios/arm
+    - .build-native
+
+
+###############
+# check stage #
+###############
+
+.check/native-from-sources:
+  stage: check
+  extends:
+    - .rules/native-from-sources
+  dependencies: []
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=same-as-branch $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home build --test $TANKER_PROFILES
+
+
+check/native-from-sources/linux:
+  extends:
+    - .profiles/linux
+    - .check/native-from-sources
+
+check/native-from-sources/windows:
+  extends:
+    - .profiles/windows
+    - .check/native-from-sources
+
+check/native-from-sources/android:
+  extends:
+    - .profiles/android
+    - .check/native-from-sources
+  variables:
+    TANKER_PROFILES: --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+
+check/native-from-sources/macos/x86_64:
+  extends:
+    - .profiles/macos/x86_64
+    - .check/native-from-sources
+  variables:
+    TANKER_PROFILES: --profile macos-x86_64-release
+
+check/native-from-sources/macos/arm:
+  extends:
+    - .profiles/macos/arm
+    - .check/native-from-sources
+  variables:
+    TANKER_PROFILES: --profile macos-armv8-release
+
+check/native-from-sources/ios/x86_64:
+  extends:
+    - .profiles/ios/x86_64
+    - .check/native-from-sources
+  variables:
+    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+
+check/native-from-sources/ios/arm:
+  extends:
+    - .profiles/ios/arm
+    - .check/native-from-sources
+  variables:
+    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+
+.rules/check/deployed-native:
+  rules: !reference [.rules/build-native, rules]
+
+.check/deployed-native:
+  stage: check
+  extends:
+    - .rules/check/deployed-native
+  script:
+    - poetry run python run-ci.py --isolate-conan-user-home build --test --use-tanker=deployed $TANKER_PROFILES
+
+check/deployed-native/linux:
+  extends:
+    - .profiles/linux
+    - .check/deployed-native
+  needs:
+    - build-native/linux
 
 check/deployed-native/windows:
-  stage: check
   extends:
-    - .tags/windows
-    - .rules/check/deployed-native
-    - .release-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile vs2019-release-shared
+    - .profiles/windows
+    - .check/deployed-native
+  needs:
+    - build-native/windows
 
 check/deployed-native/android:
-  stage: check
   extends:
-    - .tags/linux
-    - .rules/check/deployed-native
-    - .release-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+    - .profiles/android
+    - .check/deployed-native
+  needs:
+    - build-native/android
 
 check/deployed-native/macos/x86_64:
-  stage: check
   extends:
-    - .tags/macos/x86_64
-    - .rules/check/deployed-native
-    - .release-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-x86_64-release
+    - .profiles/macos/x86_64
+    - .check/deployed-native
+  needs:
+    - build-native/macos/x86_64
 
 check/deployed-native/macos/arm:
-  stage: check
   extends:
-    - .tags/macos/arm
-    - .rules/check/deployed-native
-    - .release-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile macos-armv8-release
+    - .profiles/macos/arm
+    - .check/deployed-native
+  needs:
+    - build-native/macos/arm
 
 check/deployed-native/ios/x86_64:
-  stage: check
   extends:
-    - .tags/macos/x86_64
-    - .rules/check/deployed-native
-    - .release-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+    - .profiles/ios/x86_64
+    - .check/deployed-native
+  needs:
+    - build-native/ios/x86_64
 
 check/deployed-native/ios/arm:
+  extends:
+    - .profiles/ios/arm
+    - .check/deployed-native
+  needs:
+    - build-native/ios/arm
+
+.check/downstream:
   stage: check
   extends:
-    - .tags/macos/arm
-    - .rules/check/deployed-native
-    - .release-artifacts
+    - .before-script/download-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+    - poetry run python run-ci.py --isolate-conan-user-home build --test --use-tanker=upstream $TANKER_PROFILES
 
 check/downstream/linux:
-  stage: check
   extends:
-    - .tags/linux
     - .rules/check/downstream/linux
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile linux-release
+    - .check/downstream
+    - .profiles/linux
 
 check/downstream/windows:
-  stage: check
   extends:
-    - .tags/windows
     - .rules/check/downstream/windows
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile vs2019-release-shared
+    - .check/downstream
+    - .profiles/windows
 
 check/downstream/android:
-  stage: check
   extends:
-    - .tags/linux
     - .rules/check/downstream/android
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+    - .check/downstream
+    - .profiles/android
 
 check/downstream/ios/x86_64:
-  stage: check
   extends:
-    - .tags/macos/x86_64
     - .rules/check/downstream/ios
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+    - .check/downstream
+    - .profiles/ios/x86_64
 
 check/downstream/ios/arm:
-  stage: check
   extends:
-    - .tags/macos/arm
     - .rules/check/downstream/ios
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+    - .check/downstream
+    - .profiles/ios/arm
 
 check/downstream/macos/x86_64:
-  stage: check
   extends:
-    - .tags/macos/x86_64
     - .rules/check/downstream/macos/x86_64
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile macos-x86_64-release
+    - .check/downstream
+    - .profiles/macos/x86_64
 
 check/downstream/macos/arm:
-  stage: check
   extends:
-    - .tags/macos/arm
     - .rules/check/downstream/macos/arm
-    - .before-script/download-artifacts
-  script:
-    - poetry run python run-ci.py --isolate-conan-user-home build-and-test --use-tanker=upstream --profile macos-armv8-release
+    - .check/downstream
+    - .profiles/macos/arm
 
 ################
 # deploy stage #
@@ -260,6 +342,14 @@ deploy:
   script:
     - poetry run python run-ci.py reset-branch $UPSTREAM_BRANCH_NAME
     - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION --registry $SDK_RUST_CARGO_REGISTRY
+  needs:
+    - build-native/linux
+    - build-native/windows
+    - build-native/android
+    - build-native/macos/x86_64
+    - build-native/macos/arm
+    - build-native/ios/x86_64
+    - build-native/ios/arm
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
