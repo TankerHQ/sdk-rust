@@ -171,7 +171,7 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let martine_config = &oidc.users["martine"];
     let martine_identity = app.create_identity(Some(martine_config.email.clone()));
 
-    app.app_update(Some(&oidc.client_id), Some(&oidc.provider), None)
+    app.app_update(Some(&oidc.client_id), Some(&oidc.provider), None, None)
         .await?;
 
     let client = reqwest::Client::new();
@@ -210,7 +210,7 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_session_token_with_register_identity() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
+    app.app_update(None, None, Some(true), None).await?;
 
     let id = &app.create_identity(None);
     let pass = Verification::Passphrase("The Cost of Legacy".into());
@@ -228,7 +228,7 @@ async fn get_session_token_with_register_identity() -> Result<(), Error> {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_session_token_with_verify_identity() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
+    app.app_update(None, None, Some(true), None).await?;
 
     let id = &app.create_identity(None);
     let pass = Verification::Passphrase("Merge remote-tracking branch 'rust/rust-next'".into());
@@ -250,7 +250,7 @@ async fn get_session_token_with_verify_identity() -> Result<(), Error> {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_session_token_with_set_verififcation_method() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
+    app.app_update(None, None, Some(true), None).await?;
 
     let id = &app.create_identity(None);
     let pass = Verification::Passphrase("Phobos".into());
@@ -299,7 +299,7 @@ async fn check_session_token_with_server(
 #[tokio::test(flavor = "multi_thread")]
 async fn check_session_token_is_valid() -> Result<(), Box<dyn std::error::Error>> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
+    app.app_update(None, None, Some(true), None).await?;
 
     let tanker = Core::new(app.make_options()).await?;
     let identity = &app.create_identity(None);
@@ -321,5 +321,225 @@ async fn check_session_token_is_valid() -> Result<(), Box<dyn std::error::Error>
     )
     .await?;
     assert_eq!(expected_method, actual_method_used);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn register_fail_with_preverified_email() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, None, Some(true)).await?;
+    let id = &app.create_identity(None);
+    let email = "mono@chromat.ic";
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+
+    let verif = Verification::PreverifiedEmail(email.into());
+
+    let err = tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+
+    tanker.stop().await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn register_fail_with_preverified_phone_number() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, None, Some(true)).await?;
+    let id = &app.create_identity(None);
+    let phone_number = "+33639982233".to_string();
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+
+    let verif = Verification::PreverifiedPhoneNumber(phone_number.into());
+
+    let err = tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+
+    tanker.stop().await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn verify_identity_fail_with_preverified_email() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, None, Some(true)).await?;
+    let id = &app.create_identity(None);
+    let email = "mono@chromat.ic";
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+
+    let verif = Verification::Email {
+        email: email.to_owned(),
+        verification_code: app.get_email_verification_code(email).await?,
+    };
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityVerificationNeeded);
+    let verif = Verification::PreverifiedEmail(email.into());
+    let err = tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+
+    tanker.stop().await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn verify_identity_fail_with_preverified_phone_number() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, None, Some(true)).await?;
+    let id = &app.create_identity(None);
+    let phone_number = "+33639982233".to_string();
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+
+    let verif = Verification::PhoneNumber {
+        phone_number: phone_number.clone(),
+        verification_code: app.get_sms_verification_code(&phone_number).await?,
+    };
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityVerificationNeeded);
+    let verif = Verification::PreverifiedPhoneNumber(phone_number.into());
+    let err = tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+
+    tanker.stop().await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn set_verification_method_with_preverified_email() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, None, Some(true)).await?;
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
+    let email = "mono@chromat.ic";
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    let verif = Verification::PreverifiedEmail(email.into());
+    tanker
+        .set_verification_method(&verif, &VerificationOptions::new())
+        .await?;
+    let methods = tanker.get_verification_methods().await?;
+    assert_eq!(
+        *methods,
+        [
+            VerificationMethod::PreverifiedEmail(email.to_string()),
+            VerificationMethod::Passphrase
+        ]
+    );
+
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let verif = Verification::Email {
+        email: email.to_owned(),
+        verification_code: app.get_email_verification_code(email).await?,
+    };
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    let methods = tanker.get_verification_methods().await?;
+    assert_eq!(
+        *methods,
+        [
+            VerificationMethod::Email(email.to_string()),
+            VerificationMethod::Passphrase
+        ]
+    );
+
+    tanker.stop().await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn set_verification_method_with_preverified_phone_number() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    app.app_update(None, None, None, Some(true)).await?;
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
+    let phone_number = "+33639982233".to_string();
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    let verif = Verification::PreverifiedPhoneNumber(phone_number.clone());
+    tanker
+        .set_verification_method(&verif, &VerificationOptions::new())
+        .await?;
+    let methods = tanker.get_verification_methods().await?;
+    assert_eq!(
+        *methods,
+        [
+            VerificationMethod::PreverifiedPhoneNumber(phone_number.to_string()),
+            VerificationMethod::Passphrase
+        ]
+    );
+
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let verif = Verification::PhoneNumber {
+        phone_number: phone_number.clone(),
+        verification_code: app.get_sms_verification_code(&phone_number).await?,
+    };
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    let methods = tanker.get_verification_methods().await?;
+    assert_eq!(
+        *methods,
+        [
+            VerificationMethod::PhoneNumber(phone_number.to_string()),
+            VerificationMethod::Passphrase
+        ]
+    );
+
+    tanker.stop().await?;
+
     Ok(())
 }

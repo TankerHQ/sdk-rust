@@ -1,7 +1,7 @@
 use crate::ctanker::{CEmailVerification, CPhoneNumberVerification, CVerification};
 use std::ffi::CString;
 
-const CVERIFICATION_VERSION: u8 = 4;
+const CVERIFICATION_VERSION: u8 = 5;
 const CEMAIL_VERIFICATION_VERSION: u8 = 1;
 const CPHONE_NUMBER_VERIFICATION_VERSION: u8 = 1;
 
@@ -13,6 +13,8 @@ enum Type {
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken = 4,
     PhoneNumber = 5,
+    PreverifiedEmail = 6,
+    PreverifiedPhoneNumber = 7,
 }
 
 pub(crate) struct CVerificationWrapper {
@@ -40,6 +42,8 @@ impl CVerificationWrapper {
                     phone_number: std::ptr::null(),
                     verification_code: std::ptr::null(),
                 },
+                preverified_email: std::ptr::null(),
+                preverified_phone_number: std::ptr::null(),
             },
         }
     }
@@ -105,6 +109,28 @@ impl CVerificationWrapper {
         wrapper
     }
 
+    pub(self) fn with_preverified_email(preverified_email: &str) -> Self {
+        let mut wrapper = Self::new();
+        let cpreverified_email = CString::new(preverified_email).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::PreverifiedEmail as u8;
+        wrapper.cverif.preverified_email = cpreverified_email.as_ptr();
+
+        wrapper.cstrings.push(cpreverified_email);
+        wrapper
+    }
+
+    pub(self) fn with_preverified_phone_number(preverified_phone_number: &str) -> Self {
+        let mut wrapper = Self::new();
+        let cpreverified_phone_number = CString::new(preverified_phone_number).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::PreverifiedPhoneNumber as u8;
+        wrapper.cverif.preverified_phone_number = cpreverified_phone_number.as_ptr();
+
+        wrapper.cstrings.push(cpreverified_phone_number);
+        wrapper
+    }
+
     pub fn as_cverification(&self) -> &CVerification {
         &self.cverif
     }
@@ -125,6 +151,8 @@ pub enum Verification {
         phone_number: String,
         verification_code: String,
     },
+    PreverifiedEmail(String),
+    PreverifiedPhoneNumber(String),
 }
 
 impl Verification {
@@ -143,6 +171,12 @@ impl Verification {
                 phone_number,
                 verification_code,
             } => CVerificationWrapper::with_phone_number(phone_number, verification_code),
+            Verification::PreverifiedEmail(preverified_email) => {
+                CVerificationWrapper::with_preverified_email(preverified_email)
+            }
+            Verification::PreverifiedPhoneNumber(preverified_phone_number) => {
+                CVerificationWrapper::with_preverified_phone_number(preverified_phone_number)
+            }
         }
     }
 }

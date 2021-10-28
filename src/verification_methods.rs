@@ -17,6 +17,8 @@ pub enum VerificationMethod {
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken,
     PhoneNumber(String),
+    PreverifiedEmail(String),
+    PreverifiedPhoneNumber(String),
 }
 
 #[derive(FromPrimitive)]
@@ -29,6 +31,8 @@ enum CMethodType {
     #[allow(clippy::upper_case_acronyms)]
     OIDCIDToken = 4,
     PhoneNumber = 5,
+    PreverifiedEmail = 6,
+    PreverifiedPhoneNumber = 7,
 
     #[num_enum(default)]
     Invalid,
@@ -52,6 +56,20 @@ impl VerificationMethod {
                 let c_phone_number = unsafe { CStr::from_ptr(method.value) };
                 let phone_number = c_phone_number.to_str().unwrap().into();
                 Ok(VerificationMethod::PhoneNumber(phone_number))
+            }
+            CMethodType::PreverifiedEmail => {
+                // SAFETY: If we get a valid Email verification method, the email is a valid string
+                let c_preverified_email = unsafe { CStr::from_ptr(method.value) };
+                let preverified_email = c_preverified_email.to_str().unwrap().into();
+                Ok(VerificationMethod::PreverifiedEmail(preverified_email))
+            }
+            CMethodType::PreverifiedPhoneNumber => {
+                // SAFETY: If we get a valid PhoneNumber verification method, the number is a valid string
+                let c_preverified_phone_number = unsafe { CStr::from_ptr(method.value) };
+                let preverified_phone_number = c_preverified_phone_number.to_str().unwrap().into();
+                Ok(VerificationMethod::PreverifiedPhoneNumber(
+                    preverified_phone_number,
+                ))
             }
             CMethodType::Invalid => Err(Error::new(
                 ErrorCode::InternalError,
