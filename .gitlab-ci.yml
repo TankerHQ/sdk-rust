@@ -79,6 +79,13 @@ stages:
     # So, we are using the native syntax to create an array, which will be correctly expanded.
     - $TANKER_PROFILES = "--profile", "vs2019-release-shared"
 
+.profiles/windows/artifacts:
+  extends:
+    - .tags/windows
+  before_script:
+    - !reference [.profiles/windows, before_script]
+    - !reference [.before-script/download-artifacts, before_script]
+
 .profiles/android:
   extends:
     - .tags/linux
@@ -300,7 +307,7 @@ check/downstream/windows:
   extends:
     - .rules/check/downstream/windows
     - .check/downstream
-    - .profiles/windows
+    - .profiles/windows/artifacts
 
 check/downstream/android:
   extends:
