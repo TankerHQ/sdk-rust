@@ -285,7 +285,9 @@ check/deployed-native/ios/arm:
   stage: check
   extends:
     - .before-script/download-artifacts
+  dependencies: []
   script:
+    - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=upstream $TANKER_PROFILES
     - poetry run python run-ci.py --isolate-conan-user-home build --test --use-tanker=upstream $TANKER_PROFILES
 
 check/downstream/linux:
