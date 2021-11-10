@@ -351,7 +351,7 @@ async fn register_fail_with_preverified_phone_number() -> Result<(), Error> {
     let app = TestApp::get().await;
     app.app_update(None, None, None, Some(true)).await?;
     let id = &app.create_identity(None);
-    let phone_number = "+33639982233".to_string();
+    let phone_number = "+33639982233";
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(id).await?;
@@ -406,13 +406,13 @@ async fn verify_identity_fail_with_preverified_phone_number() -> Result<(), Erro
     let app = TestApp::get().await;
     app.app_update(None, None, None, Some(true)).await?;
     let id = &app.create_identity(None);
-    let phone_number = "+33639982233".to_string();
+    let phone_number = "+33639982233";
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
 
     let verif = Verification::PhoneNumber {
-        phone_number: phone_number.clone(),
+        phone_number: phone_number.to_owned(),
         verification_code: app.get_sms_verification_code(&phone_number).await?,
     };
     tanker
