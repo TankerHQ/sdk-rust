@@ -110,6 +110,7 @@ impl Admin {
         oidc_client_id: Option<&str>,
         oidc_provider: Option<&str>,
         with_session_token: Option<bool>,
+        preverified_verification: Option<bool>,
     ) -> Result<(), Error> {
         let url = self.make_url(id);
         let mut json = serde_json::Map::<_, _>::new();
@@ -123,6 +124,12 @@ impl Admin {
             json.insert(
                 "session_certificates_enabled".to_owned(),
                 with_session_token.into(),
+            );
+        }
+        if let Some(preverified_verification) = preverified_verification {
+            json.insert(
+                "preverified_verification_enabled".to_owned(),
+                preverified_verification.into(),
             );
         }
         let json: Value = json.into();
