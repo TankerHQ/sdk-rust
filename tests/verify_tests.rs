@@ -413,7 +413,7 @@ async fn verify_identity_fail_with_preverified_phone_number() -> Result<(), Erro
 
     let verif = Verification::PhoneNumber {
         phone_number: phone_number.to_owned(),
-        verification_code: app.get_sms_verification_code(&phone_number).await?,
+        verification_code: app.get_sms_verification_code(phone_number).await?,
     };
     tanker
         .register_identity(&verif, &VerificationOptions::new())
