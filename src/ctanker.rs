@@ -151,19 +151,31 @@ impl CTankerLib {
 
         let fut = {
             let coptions = tanker_options {
-                version: 3,
+                version: 4,
                 app_id: options.app_id.as_ptr(),
                 url: options
                     .url
                     .as_ref()
                     .map(|s| s.as_ptr())
                     .unwrap_or(std::ptr::null()),
-                writable_path: options.writable_path.as_ptr(),
+                persistent_path: options.persistent_path.as_ptr(),
+                cache_path: options.cache_path.as_ptr(),
                 sdk_type: sdk_type.as_ptr(),
                 sdk_version: sdk_version.as_ptr(),
-                http_send_request: None,
-                http_cancel_request: None,
-                http_data: std::ptr::null_mut(),
+                http_options: tanker_http_options {
+                    send_request: None,
+                    cancel_request: None,
+                    data: std::ptr::null_mut(),
+                },
+                datastore_options: tanker_datastore_options {
+                    open: None,
+                    close: None,
+                    nuke: None,
+                    put_serialized_device: None,
+                    find_serialized_device: None,
+                    put_cache_values: None,
+                    find_cache_values: None,
+                },
             };
             unsafe { CFuture::new(tanker_call!(self, tanker_create(&coptions))) }
         };

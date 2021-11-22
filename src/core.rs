@@ -21,8 +21,9 @@ impl Core {
     /// # use tankersdk::*;
     /// # async {
     /// let app_id = "Your tanker App ID".to_string();
-    /// let writable_path = "/some/writable/path".to_string();
-    /// let tanker = Core::new(Options::new(app_id, writable_path)).await?;
+    /// let persistent_path = "/some/writable/path".to_string();
+    /// let cache_path = "/some/cache/path".to_string();
+    /// let tanker = Core::new(Options::new(app_id, persistent_path, cache_path)).await?;
     /// # Result::<(), Error>::Ok(()) };
     /// ```
     pub async fn new(options: Options) -> Result<Self, Error> {

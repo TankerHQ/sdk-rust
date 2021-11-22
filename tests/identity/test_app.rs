@@ -31,9 +31,13 @@ impl TestApp {
     }
 
     pub fn make_options(&self) -> Options {
-        Options::new(self.id().to_owned(), ":memory:".to_owned())
-            .with_url(self.config.api_url.clone())
-            .with_sdk_type("sdk-rust-test".to_string())
+        Options::new(
+            self.id().to_owned(),
+            ":memory:".to_owned(),
+            ":memory:".to_string(),
+        )
+        .with_url(self.config.api_url.clone())
+        .with_sdk_type("sdk-rust-test".to_string())
     }
 
     async fn new() -> Self {

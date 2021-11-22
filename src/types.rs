@@ -10,20 +10,24 @@ use std::fmt::{Display, Formatter};
 pub struct Options {
     pub(crate) url: Option<CString>,
     pub(crate) app_id: CString,
-    pub(crate) writable_path: CString,
+    pub(crate) persistent_path: CString,
+    pub(crate) cache_path: CString,
     pub(crate) sdk_type: Option<CString>,
 }
 
 impl Options {
     /// # Arguments
     /// * `app_id` - Your Tanker App ID
-    /// * `writable_path` - A writable folder. Tanker will use this folder to
+    /// * `persistent_path` - A writable folder. Tanker will use this folder to
     ///    store persistent data about user sessions on the current device.
-    pub fn new(app_id: String, writable_path: String) -> Self {
+    /// * `cache_path` - A writable folder. Tanker will use this folder to
+    ///    store encrypted cached keys. May be the same as `persistent_path`.
+    pub fn new(app_id: String, persistent_path: String, cache_path: String) -> Self {
         Self {
             url: None,
             app_id: CString::new(app_id).unwrap(),
-            writable_path: CString::new(writable_path).unwrap(),
+            persistent_path: CString::new(persistent_path).unwrap(),
+            cache_path: CString::new(cache_path).unwrap(),
             sdk_type: None,
         }
     }
