@@ -24,23 +24,32 @@ unsafe impl<T> FromRawFuturePointer for *mut T {
     }
 }
 
-unsafe impl<> FromRawFuturePointer for CTankerPtr {
-    fn from(ptr: *mut c_void) -> Self { CTankerPtr(ptr as *mut tanker) }
+unsafe impl FromRawFuturePointer for CTankerPtr {
+    fn from(ptr: *mut c_void) -> Self {
+        CTankerPtr(ptr as *mut tanker)
+    }
 }
 
-unsafe impl<> FromRawFuturePointer for u32 {
-    fn from(ptr: *mut c_void) -> Self { ptr as u32 }
+unsafe impl FromRawFuturePointer for u32 {
+    fn from(ptr: *mut c_void) -> Self {
+        ptr as u32
+    }
 }
 
-unsafe impl<> FromRawFuturePointer for usize {
-    fn from(ptr: *mut c_void) -> Self { ptr as usize }
+unsafe impl FromRawFuturePointer for usize {
+    fn from(ptr: *mut c_void) -> Self {
+        ptr as usize
+    }
 }
 
 unsafe impl FromRawFuturePointer for String {
     fn from(ptr: *mut c_void) -> Self {
         // SAFETY: CFuture::new is unsafe, so caller ensures the pointer is valid
         unsafe {
-            let str = CStr::from_ptr(ptr as *const c_char).to_str().unwrap().to_owned();
+            let str = CStr::from_ptr(ptr as *const c_char)
+                .to_str()
+                .unwrap()
+                .to_owned();
             CTankerLib::get().free_buffer(ptr);
             str
         }
@@ -76,7 +85,10 @@ pub(crate) struct CFuture<T: FromRawFuturePointer> {
 
 // SAFETY: ctanker is thread-safe
 // NOTE: We can promise CFuture<T> is Send only if T is Send (because of the oneshot channel)
-unsafe impl<T: Send + FromRawFuturePointer> Send for CFuture<T> where <CFuture<T> as Future>::Output: Send {}
+unsafe impl<T: Send + FromRawFuturePointer> Send for CFuture<T> where
+    <CFuture<T> as Future>::Output: Send
+{
+}
 
 impl<T: FromRawFuturePointer> CFuture<T> {
     // SAFETY: Because Self::new is unsafe, other functions can assume self.cfut is valid,

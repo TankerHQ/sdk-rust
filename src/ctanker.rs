@@ -315,7 +315,12 @@ impl CTankerLib {
     }
 
     pub async unsafe fn device_list(&self, ctanker: CTankerPtr) -> Result<Vec<Device>, Error> {
-        let fut = unsafe { CFuture::<*mut tanker_device_list>::new(tanker_call!(self, tanker_get_device_list(ctanker.0))) };
+        let fut = unsafe {
+            CFuture::<*mut tanker_device_list>::new(tanker_call!(
+                self,
+                tanker_get_device_list(ctanker.0)
+            ))
+        };
         let list: &mut tanker_device_list = unsafe { &mut *fut.await? };
         let methods = std::slice::from_raw_parts(list.devices, list.count as usize)
             .iter()
@@ -413,15 +418,17 @@ impl CTankerLib {
                 nb_groups: share_with_groups.len() as u32,
             };
 
-            unsafe { CFuture::new(tanker_call!(
-                self,
-                tanker_share(
-                    ctanker.0,
-                    resource_ids.as_ptr(),
-                    resource_ids.len() as u64,
-                    &coptions,
-                )
-            ))}
+            unsafe {
+                CFuture::new(tanker_call!(
+                    self,
+                    tanker_share(
+                        ctanker.0,
+                        resource_ids.as_ptr(),
+                        resource_ids.len() as u64,
+                        &coptions,
+                    )
+                ))
+            }
         };
         fut.await
     }
@@ -587,9 +594,8 @@ impl CTankerLib {
     }
 
     pub async unsafe fn encryption_session_close(&self, csess: CEncSessPtr) -> Result<(), Error> {
-        let fut = unsafe {
-            CFuture::new(tanker_call!(self, tanker_encryption_session_close(csess)))
-        };
+        let fut =
+            unsafe { CFuture::new(tanker_call!(self, tanker_encryption_session_close(csess))) };
         fut.await
     }
 
