@@ -17,6 +17,7 @@ impl VerificationOptions {
     }
 }
 
+#[allow(clippy::derivable_impls)] // with_session_token's Default is not obvious
 impl Default for VerificationOptions {
     fn default() -> Self {
         Self {

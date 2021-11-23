@@ -54,7 +54,7 @@ const STREAM_CHUNK_SIZE: usize = 1024 * 1024;
 struct TankerStream<UserStream: AsyncRead + Unpin> {
     user_stream: Option<UserStream>,
     tanker_stream_handle: *mut tanker_stream_t,
-    tanker_read_future: Option<CFuture<c_void>>,
+    tanker_read_future: Option<CFuture<usize>>,
     read_operation: Option<ReadOperation>,
     sender_bundle: SenderBundle,
     receiver: Receiver<ReadOperation>,
@@ -86,7 +86,7 @@ impl<UserStream: AsyncRead + Unpin> Drop for TankerStream<UserStream> {
         // poll_read, which can't be called because the stream is being dropped. At the end of this
         // function, the channel will be closed and pending operations discarded.
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call_ext!(tanker_stream_close(
+            CFuture::<()>::new(tanker_call_ext!(tanker_stream_close(
                 self.tanker_stream_handle
             )))
         };
@@ -219,7 +219,7 @@ impl<UserStream: AsyncRead + Unpin> AsyncRead for TankerStream<UserStream> {
             // Start a read on Tanker's stream if we haven't already
             if self.tanker_read_future.is_none() {
                 unsafe {
-                    self.tanker_read_future = Some(CFuture::<c_void>::new(tanker_call_ext!(
+                    self.tanker_read_future = Some(CFuture::new(tanker_call_ext!(
                         tanker_stream_read(
                             self.tanker_stream_handle,
                             self.buffer.as_mut_ptr(),
@@ -255,8 +255,8 @@ pub async unsafe fn encrypt_stream<UserStream: AsyncRead + Unpin>(
     tanker_stream.user_stream = Some(user_stream);
 
     let fut = unsafe {
-        CFuture::<tanker_stream_t>::new(tanker_call_ext!(tanker_stream_encrypt(
-            ctanker,
+        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(tanker_stream_encrypt(
+            ctanker.0,
             Some(read_underlying_stream),
             (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
             &options_wrapper.c_options,
@@ -275,7 +275,7 @@ pub async unsafe fn encryption_session_encrypt_stream<UserStream: AsyncRead + Un
     tanker_stream.user_stream = Some(user_stream);
 
     let fut = unsafe {
-        CFuture::<tanker_stream_t>::new(tanker_call_ext!(tanker_encryption_session_stream_encrypt(
+        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(tanker_encryption_session_stream_encrypt(
             csess,
             Some(read_underlying_stream),
             (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
@@ -293,8 +293,8 @@ pub async unsafe fn decrypt_stream<UserStream: AsyncRead + Unpin>(
     let mut tanker_stream = Box::new(TankerStream::new());
 
     let fut = unsafe {
-        CFuture::<tanker_stream_t>::new(tanker_call_ext!(tanker_stream_decrypt(
-            ctanker,
+        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(tanker_stream_decrypt(
+            ctanker.0,
             Some(read_underlying_stream),
             (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
         )))

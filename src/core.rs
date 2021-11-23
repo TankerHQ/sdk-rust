@@ -97,7 +97,7 @@ impl Core {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
             CTankerLib::get()
-                .register_identity(self.ctanker, verif_wrapper.as_cverification(), options)
+                .register_identity(self.ctanker, verif_wrapper.as_cverification_ptr(), options)
                 .await
         }
     }
@@ -116,7 +116,7 @@ impl Core {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
             CTankerLib::get()
-                .verify_identity(self.ctanker, verif_wrapper.as_cverification(), options)
+                .verify_identity(self.ctanker, verif_wrapper.as_cverification_ptr(), options)
                 .await
         }
     }
@@ -144,7 +144,7 @@ impl Core {
         let verif_wrapper = prov.to_cverification_wrapper();
         unsafe {
             CTankerLib::get()
-                .verify_provisional_identity(self.ctanker, verif_wrapper.as_cverification())
+                .verify_provisional_identity(self.ctanker, verif_wrapper.as_cverification_ptr())
                 .await
         }
     }
@@ -163,7 +163,7 @@ impl Core {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
             CTankerLib::get()
-                .set_verification_method(self.ctanker, verif_wrapper.as_cverification(), options)
+                .set_verification_method(self.ctanker, verif_wrapper.as_cverification_ptr(), options)
                 .await
         }
     }

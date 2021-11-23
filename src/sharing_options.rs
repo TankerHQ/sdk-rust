@@ -61,7 +61,7 @@ impl Default for EncryptionOptions {
 /// The `share_with_users` and `share_with_groups` methods allow you to specify who will be able to decrypt the resource.
 ///
 /// In general, if you need to share a resource with multiple users, it is advised to create groups and use `share_with_groups`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct SharingOptions {
     pub(crate) share_with_users: Vec<CString>,
@@ -95,14 +95,5 @@ impl SharingOptions {
             .map(|g| CString::new(g.as_ref()).unwrap())
             .collect();
         self
-    }
-}
-
-impl Default for SharingOptions {
-    fn default() -> Self {
-        Self {
-            share_with_users: vec![],
-            share_with_groups: vec![],
-        }
     }
 }
