@@ -1,4 +1,6 @@
-use crate::ctanker::{CEmailVerification, CPhoneNumberVerification, CVerification, CVerificationPtr};
+use crate::ctanker::{
+    CEmailVerification, CPhoneNumberVerification, CVerification, CVerificationPtr,
+};
 use std::ffi::CString;
 
 const CVERIFICATION_VERSION: u8 = 5;

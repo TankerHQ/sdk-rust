@@ -219,13 +219,12 @@ impl<UserStream: AsyncRead + Unpin> AsyncRead for TankerStream<UserStream> {
             // Start a read on Tanker's stream if we haven't already
             if self.tanker_read_future.is_none() {
                 unsafe {
-                    self.tanker_read_future = Some(CFuture::new(tanker_call_ext!(
-                        tanker_stream_read(
+                    self.tanker_read_future =
+                        Some(CFuture::new(tanker_call_ext!(tanker_stream_read(
                             self.tanker_stream_handle,
                             self.buffer.as_mut_ptr(),
                             self.buffer.capacity() as i64,
-                        )
-                    )));
+                        ))));
                 }
             }
 
@@ -275,11 +274,13 @@ pub async unsafe fn encryption_session_encrypt_stream<UserStream: AsyncRead + Un
     tanker_stream.user_stream = Some(user_stream);
 
     let fut = unsafe {
-        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(tanker_encryption_session_stream_encrypt(
-            csess,
-            Some(read_underlying_stream),
-            (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
-        )))
+        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(
+            tanker_encryption_session_stream_encrypt(
+                csess,
+                Some(read_underlying_stream),
+                (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
+            )
+        ))
     };
     tanker_stream.tanker_stream_handle = fut.await?;
 

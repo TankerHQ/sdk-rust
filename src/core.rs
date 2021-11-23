@@ -163,7 +163,11 @@ impl Core {
         let verif_wrapper = verification.to_cverification_wrapper();
         unsafe {
             CTankerLib::get()
-                .set_verification_method(self.ctanker, verif_wrapper.as_cverification_ptr(), options)
+                .set_verification_method(
+                    self.ctanker,
+                    verif_wrapper.as_cverification_ptr(),
+                    options,
+                )
                 .await
         }
     }
