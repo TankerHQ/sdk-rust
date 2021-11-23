@@ -18,7 +18,7 @@ macro_rules! tanker_call_ext {
 
 mod cfuture;
 
-pub use cfuture::*;
+pub(crate) use cfuture::*;
 use std::marker::PhantomData;
 
 mod cstream;
@@ -33,9 +33,20 @@ pub type CEmailVerification = tanker_email_verification;
 pub type CPhoneNumberVerification = tanker_phone_number_verification;
 pub type CVerificationMethod = tanker_verification_method;
 pub type CDevice = tanker_device_list_elem;
-pub type CTankerPtr = *mut tanker_t;
 pub type CEncSessPtr = *mut tanker_encryption_session_t;
 pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
+
+#[derive(Copy, Clone, Debug)]
+pub struct CTankerPtr(pub(crate) *mut tanker_t);
+
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for CTankerPtr {}
+
+#[derive(Copy, Clone, Debug)]
+pub struct CVerificationPtr(pub(crate) *const tanker_verification);
+
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for CVerificationPtr {}
 
 use crate::{
     AttachResult, Device, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options,
@@ -137,33 +148,35 @@ impl CTankerLib {
             .sdk_type
             .unwrap_or_else(|| CString::new(RUST_SDK_TYPE).unwrap());
         let sdk_version = CString::new(RUST_SDK_VERSION).unwrap();
-        let coptions = tanker_options {
-            version: 3,
-            app_id: options.app_id.as_ptr(),
-            url: options
-                .url
-                .as_ref()
-                .map(|s| s.as_ptr())
-                .unwrap_or(std::ptr::null()),
-            writable_path: options.writable_path.as_ptr(),
-            sdk_type: sdk_type.as_ptr(),
-            sdk_version: sdk_version.as_ptr(),
-            http_send_request: None,
-            http_cancel_request: None,
-            http_data: std::ptr::null_mut(),
-        };
 
-        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_create(&coptions))) };
+        let fut = {
+            let coptions = tanker_options {
+                version: 3,
+                app_id: options.app_id.as_ptr(),
+                url: options
+                    .url
+                    .as_ref()
+                    .map(|s| s.as_ptr())
+                    .unwrap_or(std::ptr::null()),
+                writable_path: options.writable_path.as_ptr(),
+                sdk_type: sdk_type.as_ptr(),
+                sdk_version: sdk_version.as_ptr(),
+                http_send_request: None,
+                http_cancel_request: None,
+                http_data: std::ptr::null_mut(),
+            };
+            unsafe { CFuture::new(tanker_call!(self, tanker_create(&coptions))) }
+        };
         fut.await
     }
 
     pub async unsafe fn destroy(&self, ctanker: CTankerPtr) {
-        let fut = unsafe { CFuture::<c_void>::new(tanker_call!(self, tanker_destroy(ctanker))) };
-        let _ = fut.await; // Ignore errors, nothing useful we can do if destroy() fails
+        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_destroy(ctanker.0))) };
+        let _: Result<(), _> = fut.await; // Ignore errors, nothing useful we can do if destroy() fails
     }
 
     pub unsafe fn status(&self, ctanker: CTankerPtr) -> Status {
-        let status = unsafe { tanker_call!(self, tanker_status(ctanker)) };
+        let status = unsafe { tanker_call!(self, tanker_status(ctanker.0)) };
         // SAFETY: The native lib never returns invalid status codes
         unsafe { Status::from_unchecked(status as u32) }
     }
@@ -176,20 +189,20 @@ impl CTankerLib {
             )
         })?;
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::<u32>::new(tanker_call!(
                 self,
-                tanker_start(ctanker, cidentity.as_ptr())
+                tanker_start(ctanker.0, cidentity.as_ptr())
             ))
         };
         fut.await.map(|status_voidptr| {
             // SAFETY: The native lib never returns invalid status codes
-            unsafe { Status::from_unchecked(status_voidptr as u32) }
+            unsafe { Status::from_unchecked(status_voidptr) }
         })
     }
 
     pub async unsafe fn stop(&self, ctanker: CTankerPtr) -> Result<(), Error> {
-        let fut = unsafe { CFuture::<c_void>::new(tanker_call!(self, tanker_stop(ctanker))) };
-        fut.await.map(|_| ())
+        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_stop(ctanker.0))) };
+        fut.await
     }
 
     pub async unsafe fn generate_verification_key(
@@ -199,19 +212,16 @@ impl CTankerLib {
         let fut = unsafe {
             CFuture::new(tanker_call!(
                 self,
-                tanker_generate_verification_key(ctanker)
+                tanker_generate_verification_key(ctanker.0)
             ))
         };
-        let str_ptr = fut.await?;
-        let str = CStr::from_ptr(str_ptr).to_str().unwrap().to_owned();
-        self.free_buffer(str_ptr as *const c_void);
-        Ok(str)
+        fut.await
     }
 
     pub async unsafe fn register_identity(
         &self,
         ctanker: CTankerPtr,
-        verification: *const CVerification,
+        verification: CVerificationPtr,
         options: &VerificationOptions,
     ) -> Result<Option<String>, Error> {
         let c_options = tanker_verification_options {
@@ -219,26 +229,18 @@ impl CTankerLib {
             with_session_token: options.with_session_token,
         };
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
-                tanker_register_identity(ctanker, verification, &c_options,)
+                tanker_register_identity(ctanker.0, verification.0, &c_options,)
             ))
         };
-        let token_str_ptr = fut.await? as *mut c_char;
-        Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
-            let str = CStr::from_ptr(str_ptr.as_ptr())
-                .to_str()
-                .unwrap()
-                .to_owned();
-            self.free_buffer(str_ptr.as_ptr() as *mut c_void);
-            str
-        }))
+        fut.await
     }
 
     pub async unsafe fn verify_identity(
         &self,
         ctanker: CTankerPtr,
-        verification: *const CVerification,
+        verification: CVerificationPtr,
         options: &VerificationOptions,
     ) -> Result<Option<String>, Error> {
         let c_options = tanker_verification_options {
@@ -246,40 +248,32 @@ impl CTankerLib {
             with_session_token: options.with_session_token,
         };
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
-                tanker_verify_identity(ctanker, verification, &c_options,)
+                tanker_verify_identity(ctanker.0, verification.0, &c_options,)
             ))
         };
-        let token_str_ptr = fut.await? as *mut c_char;
-        Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
-            let str = CStr::from_ptr(str_ptr.as_ptr())
-                .to_str()
-                .unwrap()
-                .to_owned();
-            self.free_buffer(str_ptr.as_ptr() as *mut c_void);
-            str
-        }))
+        fut.await
     }
 
     pub async unsafe fn verify_provisional_identity(
         &self,
         ctanker: CTankerPtr,
-        verif: *const CVerification,
+        verif: CVerificationPtr,
     ) -> Result<(), Error> {
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
-                tanker_verify_provisional_identity(ctanker, verif)
+                tanker_verify_provisional_identity(ctanker.0, verif.0)
             ))
         };
-        fut.await.map(|_| ())
+        fut.await
     }
 
     pub async unsafe fn set_verification_method(
         &self,
         ctanker: CTankerPtr,
-        verification: *const CVerification,
+        verification: CVerificationPtr,
         options: &VerificationOptions,
     ) -> Result<Option<String>, Error> {
         let c_options = tanker_verification_options {
@@ -287,28 +281,24 @@ impl CTankerLib {
             with_session_token: options.with_session_token,
         };
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
-                tanker_set_verification_method(ctanker, verification, &c_options,)
+                tanker_set_verification_method(ctanker.0, verification.0, &c_options,)
             ))
         };
-        let token_str_ptr = fut.await? as *mut c_char;
-        Ok(NonNull::new(token_str_ptr).map(|str_ptr| {
-            let str = CStr::from_ptr(str_ptr.as_ptr())
-                .to_str()
-                .unwrap()
-                .to_owned();
-            self.free_buffer(str_ptr.as_ptr() as *mut c_void);
-            str
-        }))
+        fut.await
     }
 
     pub async unsafe fn get_verification_methods(
         &self,
         ctanker: CTankerPtr,
     ) -> Result<Vec<VerificationMethod>, Error> {
-        let fut =
-            unsafe { CFuture::new(tanker_call!(self, tanker_get_verification_methods(ctanker))) };
+        let fut = unsafe {
+            CFuture::<*mut tanker_verification_method_list>::new(tanker_call!(
+                self,
+                tanker_get_verification_methods(ctanker.0)
+            ))
+        };
         let list: &mut tanker_verification_method_list = unsafe { &mut *fut.await? };
         let methods = std::slice::from_raw_parts(list.methods, list.count as usize)
             .iter()
@@ -320,15 +310,12 @@ impl CTankerLib {
     }
 
     pub async unsafe fn device_id(&self, ctanker: CTankerPtr) -> Result<String, Error> {
-        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_device_id(ctanker))) };
-        let str_ptr = fut.await?;
-        let str = CStr::from_ptr(str_ptr).to_str().unwrap().to_owned();
-        self.free_buffer(str_ptr as *const c_void);
-        Ok(str)
+        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_device_id(ctanker.0))) };
+        fut.await
     }
 
     pub async unsafe fn device_list(&self, ctanker: CTankerPtr) -> Result<Vec<Device>, Error> {
-        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_get_device_list(ctanker))) };
+        let fut = unsafe { CFuture::<*mut tanker_device_list>::new(tanker_call!(self, tanker_get_device_list(ctanker.0))) };
         let list: &mut tanker_device_list = unsafe { &mut *fut.await? };
         let methods = std::slice::from_raw_parts(list.devices, list.count as usize)
             .iter()
@@ -351,10 +338,10 @@ impl CTankerLib {
         let options_wrapper = options.to_c_encryption_options();
 
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
                 tanker_encrypt(
-                    ctanker,
+                    ctanker.0,
                     encrypted.as_mut_ptr(),
                     data.as_ptr(),
                     data.len() as u64,
@@ -372,19 +359,19 @@ impl CTankerLib {
 
     pub async unsafe fn decrypt(&self, ctanker: CTankerPtr, data: &[u8]) -> Result<Vec<u8>, Error> {
         let decrypted_size = unsafe {
-            let fut = CFuture::<c_void>::new(tanker_call!(
+            let fut = CFuture::new(tanker_call!(
                 self,
                 tanker_decrypted_size(data.as_ptr(), data.len() as u64,)
             ));
-            fut.await? as usize
+            fut.await?
         };
         let mut decrypted = Vec::with_capacity(decrypted_size);
 
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
                 tanker_decrypt(
-                    ctanker,
+                    ctanker.0,
                     decrypted.as_mut_ptr(),
                     data.as_ptr(),
                     data.len() as u64,
@@ -405,38 +392,38 @@ impl CTankerLib {
         resource_ids: &[CString],
         options: &SharingOptions,
     ) -> Result<(), Error> {
-        let resource_ids = resource_ids.iter().map(|u| u.as_ptr()).collect::<Vec<_>>();
-        let share_with_users = options
-            .share_with_users
-            .iter()
-            .map(|u| u.as_ptr())
-            .collect::<Vec<_>>();
-        let share_with_groups = options
-            .share_with_groups
-            .iter()
-            .map(|u| u.as_ptr())
-            .collect::<Vec<_>>();
+        let fut = {
+            let resource_ids = resource_ids.iter().map(|u| u.as_ptr()).collect::<Vec<_>>();
+            let share_with_users = options
+                .share_with_users
+                .iter()
+                .map(|u| u.as_ptr())
+                .collect::<Vec<_>>();
+            let share_with_groups = options
+                .share_with_groups
+                .iter()
+                .map(|u| u.as_ptr())
+                .collect::<Vec<_>>();
 
-        let coptions = tanker_sharing_options {
-            version: 1,
-            share_with_users: share_with_users.as_ptr(),
-            nb_users: share_with_users.len() as u32,
-            share_with_groups: share_with_groups.as_ptr(),
-            nb_groups: share_with_groups.len() as u32,
-        };
+            let coptions = tanker_sharing_options {
+                version: 1,
+                share_with_users: share_with_users.as_ptr(),
+                nb_users: share_with_users.len() as u32,
+                share_with_groups: share_with_groups.as_ptr(),
+                nb_groups: share_with_groups.len() as u32,
+            };
 
-        let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            unsafe { CFuture::new(tanker_call!(
                 self,
                 tanker_share(
-                    ctanker,
+                    ctanker.0,
                     resource_ids.as_ptr(),
                     resource_ids.len() as u64,
                     &coptions,
                 )
-            ))
+            ))}
         };
-        fut.await.map(|_| ())
+        fut.await
     }
 
     pub async unsafe fn attach_provisional_identity(
@@ -445,9 +432,9 @@ impl CTankerLib {
         identity: &CStr,
     ) -> Result<AttachResult, Error> {
         let fut = unsafe {
-            CFuture::new(tanker_call!(
+            CFuture::<*mut tanker_attach_result>::new(tanker_call!(
                 self,
-                tanker_attach_provisional_identity(ctanker, identity.as_ptr(),)
+                tanker_attach_provisional_identity(ctanker.0, identity.as_ptr(),)
             ))
         };
         let cresult: &mut tanker_attach_result = unsafe { &mut *fut.await? };
@@ -474,11 +461,7 @@ impl CTankerLib {
                 tanker_get_resource_id(data.as_ptr(), data.len() as u64,)
             ))
         };
-        let str_ptr = fut.await?;
-        // SAFETY: tanker_get_resource_id returns valid UTF-8 on success
-        let str = unsafe { CStr::from_ptr(str_ptr).to_str().unwrap().to_owned() };
-        unsafe { self.free_buffer(str_ptr as *const c_void) };
-        Ok(str)
+        fut.await
     }
 
     pub async unsafe fn create_group(
@@ -491,13 +474,10 @@ impl CTankerLib {
         let fut = unsafe {
             CFuture::new(tanker_call!(
                 self,
-                tanker_create_group(ctanker, member_ptrs.as_ptr(), member_ptrs.len() as u64,)
+                tanker_create_group(ctanker.0, member_ptrs.as_ptr(), member_ptrs.len() as u64,)
             ))
         };
-        let str_ptr = fut.await?;
-        let str = CStr::from_ptr(str_ptr).to_str().unwrap().to_owned();
-        self.free_buffer(str_ptr as *const c_void);
-        Ok(str)
+        fut.await
     }
 
     pub async unsafe fn update_group_members(
@@ -514,10 +494,10 @@ impl CTankerLib {
             .collect::<Vec<_>>();
 
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
                 tanker_update_group_members(
-                    ctanker,
+                    ctanker.0,
                     group_id.as_ptr(),
                     users_to_add.as_ptr(),
                     users_to_add.len() as u64,
@@ -526,7 +506,7 @@ impl CTankerLib {
                 )
             ))
         };
-        fut.await.map(|_| ())
+        fut.await
     }
 
     pub async unsafe fn revoke_device(
@@ -542,12 +522,12 @@ impl CTankerLib {
         })?;
 
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
-                tanker_revoke_device(ctanker, cdevice_id.as_ptr(),)
+                tanker_revoke_device(ctanker.0, cdevice_id.as_ptr(),)
             ))
         };
-        fut.await.map(|_| ())
+        fut.await
     }
 
     pub async unsafe fn encryption_session_open(
@@ -560,7 +540,7 @@ impl CTankerLib {
         unsafe {
             CFuture::new(tanker_call!(
                 self,
-                tanker_encryption_session_open(ctanker, &options_wrapper.c_options,)
+                tanker_encryption_session_open(ctanker.0, &options_wrapper.c_options,)
             ))
         }
         .await
@@ -578,7 +558,7 @@ impl CTankerLib {
         let mut encrypted = Vec::with_capacity(encrypted_size);
 
         unsafe {
-            CFuture::<c_void>::new(tanker_call!(
+            CFuture::new(tanker_call!(
                 self,
                 tanker_encryption_session_encrypt(
                     csess,
@@ -603,18 +583,14 @@ impl CTankerLib {
                 tanker_encryption_session_get_resource_id(csess)
             ))
         };
-        let str_ptr = fut.await.unwrap();
-        // SAFETY: tanker_encryption_session_get_resource_id returns valid UTF-8
-        let str = unsafe { CStr::from_ptr(str_ptr).to_str().unwrap().to_owned() };
-        unsafe { self.free_buffer(str_ptr as *const c_void) };
-        str
+        fut.await.unwrap()
     }
 
     pub async unsafe fn encryption_session_close(&self, csess: CEncSessPtr) -> Result<(), Error> {
         let fut = unsafe {
-            CFuture::<c_void>::new(tanker_call!(self, tanker_encryption_session_close(csess)))
+            CFuture::new(tanker_call!(self, tanker_encryption_session_close(csess)))
         };
-        fut.await.map(|_| ())
+        fut.await
     }
 
     pub async fn prehash_password(&self, pass: &str) -> Result<String, Error> {
@@ -626,12 +602,7 @@ impl CTankerLib {
         })?;
         let fut =
             unsafe { CFuture::new(tanker_call!(self, tanker_prehash_password(cpass.as_ptr()))) };
-        let str_ptr = fut.await?;
-        unsafe {
-            let str = CStr::from_ptr(str_ptr).to_str().unwrap().to_owned();
-            self.free_buffer(str_ptr as *const c_void);
-            Ok(str)
-        }
+        fut.await
     }
 
     pub unsafe fn free_buffer(&self, buffer: *const c_void) {
@@ -653,6 +624,9 @@ struct EncryptionOptionsWrapper<'a> {
     c_options: tanker_encrypt_options,
     phantom: PhantomData<&'a ()>,
 }
+
+// SAFETY: Encryption options are thread-safe (read-only after construction)
+unsafe impl Send for EncryptionOptionsWrapper<'_> {}
 
 impl EncryptionOptions {
     fn to_c_encryption_options<'a>(&'a self) -> EncryptionOptionsWrapper {

@@ -1,4 +1,4 @@
-use crate::ctanker::{CEmailVerification, CPhoneNumberVerification, CVerification};
+use crate::ctanker::{CEmailVerification, CPhoneNumberVerification, CVerification, CVerificationPtr};
 use std::ffi::CString;
 
 const CVERIFICATION_VERSION: u8 = 5;
@@ -21,6 +21,10 @@ pub(crate) struct CVerificationWrapper {
     cstrings: Vec<CString>,
     cverif: CVerification,
 }
+
+// SAFETY: CVerificationWrapper is thread-safe (read-only after construction)
+unsafe impl Send for CVerificationWrapper {}
+unsafe impl Sync for CVerificationWrapper {}
 
 impl CVerificationWrapper {
     fn new() -> Self {
@@ -131,8 +135,8 @@ impl CVerificationWrapper {
         wrapper
     }
 
-    pub fn as_cverification(&self) -> &CVerification {
-        &self.cverif
+    pub fn as_cverification_ptr(&self) -> CVerificationPtr {
+        CVerificationPtr(&self.cverif)
     }
 }
 

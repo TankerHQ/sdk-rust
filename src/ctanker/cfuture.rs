@@ -8,19 +8,77 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, Weak};
 use std::task::{Context, Poll, Waker};
 
-struct CFutureContext<T> {
+/// # Safety
+/// We know the c_void argument comes from ctanker, so all the unsafe impls can safely assume this
+pub(crate) unsafe trait FromRawFuturePointer {
+    fn from(ptr: *mut c_void) -> Self;
+}
+
+unsafe impl FromRawFuturePointer for () {
+    fn from(_ptr: *mut c_void) -> Self {}
+}
+
+unsafe impl<T> FromRawFuturePointer for *mut T {
+    fn from(ptr: *mut c_void) -> Self {
+        ptr as *mut T
+    }
+}
+
+unsafe impl<> FromRawFuturePointer for CTankerPtr {
+    fn from(ptr: *mut c_void) -> Self { CTankerPtr(ptr as *mut tanker) }
+}
+
+unsafe impl<> FromRawFuturePointer for u32 {
+    fn from(ptr: *mut c_void) -> Self { ptr as u32 }
+}
+
+unsafe impl<> FromRawFuturePointer for usize {
+    fn from(ptr: *mut c_void) -> Self { ptr as usize }
+}
+
+unsafe impl FromRawFuturePointer for String {
+    fn from(ptr: *mut c_void) -> Self {
+        // SAFETY: CFuture::new is unsafe, so caller ensures the pointer is valid
+        unsafe {
+            let str = CStr::from_ptr(ptr as *const c_char).to_str().unwrap().to_owned();
+            CTankerLib::get().free_buffer(ptr);
+            str
+        }
+    }
+}
+
+unsafe impl FromRawFuturePointer for Option<String> {
+    fn from(ptr: *mut c_void) -> Self {
+        let str_ptr = ptr as *mut c_char;
+        NonNull::new(str_ptr).map(|str_ptr| {
+            // SAFETY: CFuture::new is unsafe, so caller ensures the pointer is valid
+            let str = unsafe { CStr::from_ptr(str_ptr.as_ptr()) }
+                .to_str()
+                .unwrap()
+                .to_owned();
+            unsafe { CTankerLib::get().free_buffer(ptr) };
+            str
+        })
+    }
+}
+
+struct CFutureContext<T: FromRawFuturePointer> {
     pub waker: Weak<Mutex<Option<Waker>>>,
     pub sender: oneshot::Sender<<CFuture<T> as Future>::Output>,
 }
 
 #[derive(Debug)]
-pub struct CFuture<T> {
+pub(crate) struct CFuture<T: FromRawFuturePointer> {
     cfut: *mut tanker_future,
     receiver: Option<oneshot::Receiver<<Self as Future>::Output>>,
     waker: Arc<Mutex<Option<Waker>>>,
 }
 
-impl<T> CFuture<T> {
+// SAFETY: ctanker is thread-safe
+// NOTE: We can promise CFuture<T> is Send only if T is Send (because of the oneshot channel)
+unsafe impl<T: Send + FromRawFuturePointer> Send for CFuture<T> where <CFuture<T> as Future>::Output: Send {}
+
+impl<T: FromRawFuturePointer> CFuture<T> {
     // SAFETY: Because Self::new is unsafe, other functions can assume self.cfut is valid,
     //          HOWEVER, it is unsound to call any tanker_future_* function except _destroy
     //          after tanker_future_then has been called, so the associated funcs are still unsafe!
@@ -32,10 +90,10 @@ impl<T> CFuture<T> {
         }
     }
 
-    unsafe fn get_result(cfut: *mut tanker_future) -> Option<*mut T> {
+    unsafe fn get_result(cfut: *mut tanker_future) -> Option<T> {
         unsafe {
             if tanker_call_ext!(tanker_future_is_ready(cfut)) {
-                Some(tanker_call_ext!(tanker_future_get_voidptr(cfut)) as *mut T)
+                Some(T::from(tanker_call_ext!(tanker_future_get_voidptr(cfut))))
             } else {
                 None
             }
@@ -87,14 +145,14 @@ impl<T> CFuture<T> {
     }
 }
 
-impl<T> Drop for CFuture<T> {
+impl<T: FromRawFuturePointer> Drop for CFuture<T> {
     fn drop(&mut self) {
         unsafe { tanker_call_ext!(tanker_future_destroy(self.cfut)) }
     }
 }
 
-impl<T> Future for CFuture<T> {
-    type Output = Result<*mut T, Error>;
+impl<T: FromRawFuturePointer> Future for CFuture<T> {
+    type Output = Result<T, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // If poll returns Pending, it promises to wake the Waker that it just received
