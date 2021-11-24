@@ -35,7 +35,7 @@ default:
 ##########
 
 stages:
-  - build-native
+  - prepare
   - check
   - deploy
 
@@ -117,57 +117,57 @@ stages:
     TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
 
 ######################
-# build-native stage #
+# prepare stage #
 ######################
 
-.rules/build-native:
+.rules/prepare:
   rules:
     - !reference [.rules/web/auto, rules]
     - !reference [.rules/mr/manual, rules]
     - !reference [.rules/deploy-pipeline, rules]
 
-.build-native:
-  stage: build-native
+.prepare:
+  stage: prepare
   extends:
-    - .rules/build-native
+    - .rules/prepare
     - .release-artifacts
   script:
     - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE $TANKER_PROFILES
 
-build-native/linux:
+prepare/linux:
   extends:
     - .profiles/linux
-    - .build-native
+    - .prepare
 
-build-native/windows:
+prepare/windows:
   extends:
     - .profiles/windows
-    - .build-native
+    - .prepare
 
-build-native/android:
+prepare/android:
   extends:
     - .profiles/android
-    - .build-native
+    - .prepare
 
-build-native/macos/x86_64:
+prepare/macos/x86_64:
   extends:
     - .profiles/macos/x86_64
-    - .build-native
+    - .prepare
 
-build-native/macos/arm:
+prepare/macos/arm:
   extends:
     - .profiles/macos/arm
-    - .build-native
+    - .prepare
 
-build-native/ios/x86_64:
+prepare/ios/x86_64:
   extends:
     - .profiles/ios/x86_64
-    - .build-native
+    - .prepare
 
-build-native/ios/arm:
+prepare/ios/arm:
   extends:
     - .profiles/ios/arm
-    - .build-native
+    - .prepare
 
 
 ###############
@@ -230,7 +230,9 @@ check/native-from-sources/ios/arm:
     TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
 
 .rules/check/deployed-native:
-  rules: !reference [.rules/build-native, rules]
+  rules:
+    - !reference [.rules/mr/manual, rules]
+    - !reference [.rules/web/auto, rules]
 
 .check/deployed-native:
   stage: check
@@ -244,49 +246,49 @@ check/deployed-native/linux:
     - .profiles/linux
     - .check/deployed-native
   needs:
-    - build-native/linux
+    - prepare/linux
 
 check/deployed-native/windows:
   extends:
     - .profiles/windows
     - .check/deployed-native
   needs:
-    - build-native/windows
+    - prepare/windows
 
 check/deployed-native/android:
   extends:
     - .profiles/android
     - .check/deployed-native
   needs:
-    - build-native/android
+    - prepare/android
 
 check/deployed-native/macos/x86_64:
   extends:
     - .profiles/macos/x86_64
     - .check/deployed-native
   needs:
-    - build-native/macos/x86_64
+    - prepare/macos/x86_64
 
 check/deployed-native/macos/arm:
   extends:
     - .profiles/macos/arm
     - .check/deployed-native
   needs:
-    - build-native/macos/arm
+    - prepare/macos/arm
 
 check/deployed-native/ios/x86_64:
   extends:
     - .profiles/ios/x86_64
     - .check/deployed-native
   needs:
-    - build-native/ios/x86_64
+    - prepare/ios/x86_64
 
 check/deployed-native/ios/arm:
   extends:
     - .profiles/ios/arm
     - .check/deployed-native
   needs:
-    - build-native/ios/arm
+    - prepare/ios/arm
 
 .check/downstream:
   stage: check
@@ -352,13 +354,13 @@ deploy:
     - poetry run python run-ci.py reset-branch $UPSTREAM_BRANCH_NAME
     - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION --registry $SDK_RUST_CARGO_REGISTRY
   needs:
-    - build-native/linux
-    - build-native/windows
-    - build-native/android
-    - build-native/macos/x86_64
-    - build-native/macos/arm
-    - build-native/ios/x86_64
-    - build-native/ios/arm
+    - prepare/linux
+    - prepare/windows
+    - prepare/android
+    - prepare/macos/x86_64
+    - prepare/macos/arm
+    - prepare/ios/x86_64
+    - prepare/ios/arm
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
