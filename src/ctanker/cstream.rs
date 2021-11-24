@@ -36,12 +36,21 @@ use std::future::Future;
 use std::sync::Mutex;
 use tokio::sync::mpsc::{channel, error::TryRecvError, Receiver, Sender};
 
+#[derive(Copy, Clone, Debug)]
+pub struct CStreamPtr(pub(crate) *mut tanker_stream_t);
+
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for CStreamPtr {}
+
 #[derive(Debug, Clone)]
 struct ReadOperation {
     buffer: *mut u8,
     size: i64,
     operation: *mut tanker_stream_read_operation_t,
 }
+
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for ReadOperation {}
 
 struct SenderBundle {
     sender: Sender<ReadOperation>,
@@ -53,7 +62,7 @@ const STREAM_CHUNK_SIZE: usize = 1024 * 1024;
 
 struct TankerStream<UserStream: AsyncRead + Unpin> {
     user_stream: Option<UserStream>,
-    tanker_stream_handle: *mut tanker_stream_t,
+    tanker_stream_handle: CStreamPtr,
     tanker_read_future: Option<CFuture<usize>>,
     read_operation: Option<ReadOperation>,
     sender_bundle: SenderBundle,
@@ -66,7 +75,7 @@ impl<UserStream: AsyncRead + Unpin> TankerStream<UserStream> {
         let (sender, receiver) = channel(1);
         TankerStream {
             user_stream: None,
-            tanker_stream_handle: std::ptr::null_mut(),
+            tanker_stream_handle: CStreamPtr(std::ptr::null_mut()),
             tanker_read_future: None,
             read_operation: None,
             sender_bundle: SenderBundle {
@@ -87,7 +96,7 @@ impl<UserStream: AsyncRead + Unpin> Drop for TankerStream<UserStream> {
         // function, the channel will be closed and pending operations discarded.
         let fut = unsafe {
             CFuture::<()>::new(tanker_call_ext!(tanker_stream_close(
-                self.tanker_stream_handle
+                self.tanker_stream_handle.0
             )))
         };
         if let Err(e) = block_on(fut) {
@@ -221,7 +230,7 @@ impl<UserStream: AsyncRead + Unpin> AsyncRead for TankerStream<UserStream> {
                 unsafe {
                     self.tanker_read_future =
                         Some(CFuture::new(tanker_call_ext!(tanker_stream_read(
-                            self.tanker_stream_handle,
+                            self.tanker_stream_handle.0,
                             self.buffer.as_mut_ptr(),
                             self.buffer.capacity() as i64,
                         ))));
@@ -254,7 +263,7 @@ pub async unsafe fn encrypt_stream<UserStream: AsyncRead + Unpin>(
     tanker_stream.user_stream = Some(user_stream);
 
     let fut = unsafe {
-        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(tanker_stream_encrypt(
+        CFuture::new(tanker_call_ext!(tanker_stream_encrypt(
             ctanker.0,
             Some(read_underlying_stream),
             (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
@@ -274,13 +283,11 @@ pub async unsafe fn encryption_session_encrypt_stream<UserStream: AsyncRead + Un
     tanker_stream.user_stream = Some(user_stream);
 
     let fut = unsafe {
-        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(
-            tanker_encryption_session_stream_encrypt(
-                csess,
-                Some(read_underlying_stream),
-                (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
-            )
-        ))
+        CFuture::new(tanker_call_ext!(tanker_encryption_session_stream_encrypt(
+            csess,
+            Some(read_underlying_stream),
+            (&mut tanker_stream.sender_bundle as *mut _) as *mut _,
+        )))
     };
     tanker_stream.tanker_stream_handle = fut.await?;
 
@@ -294,7 +301,7 @@ pub async unsafe fn decrypt_stream<UserStream: AsyncRead + Unpin>(
     let mut tanker_stream = Box::new(TankerStream::new());
 
     let fut = unsafe {
-        CFuture::<*mut tanker_stream_t>::new(tanker_call_ext!(tanker_stream_decrypt(
+        CFuture::new(tanker_call_ext!(tanker_stream_decrypt(
             ctanker.0,
             Some(read_underlying_stream),
             (&mut tanker_stream.sender_bundle as *mut _) as *mut _,

@@ -30,6 +30,12 @@ unsafe impl FromRawFuturePointer for CTankerPtr {
     }
 }
 
+unsafe impl FromRawFuturePointer for CStreamPtr {
+    fn from(ptr: *mut c_void) -> Self {
+        CStreamPtr(ptr as *mut tanker_stream)
+    }
+}
+
 unsafe impl FromRawFuturePointer for u32 {
     fn from(ptr: *mut c_void) -> Self {
         ptr as u32
