@@ -230,7 +230,9 @@ check/native-from-sources/ios/arm:
     TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
 
 .rules/check/deployed-native:
-  rules: !reference [.rules/build-native, rules]
+  rules:
+    - !reference [.rules/mr/manual, rules]
+    - !reference [.rules/web/auto, rules]
 
 .check/deployed-native:
   stage: check
