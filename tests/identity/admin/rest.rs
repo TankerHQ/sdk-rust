@@ -35,10 +35,7 @@ pub async fn admin_rest_request(req: reqwest::RequestBuilder) -> Result<Map<Stri
         } else {
             Err(Error::new(
                 ErrorCode::InternalError,
-                format!(
-                    "Invalid JSON reply for admin request: {}",
-                    reply.to_string()
-                ),
+                format!("Invalid JSON reply for admin request: {}", &reply),
             ))
         }
     } else {

@@ -18,17 +18,10 @@ pub struct Admin {
     client: reqwest::Client,
     admin_url: String,
     trustchain_url: String,
-    api_url: String,
-    id_token: String,
 }
 
 impl Admin {
-    pub fn new(
-        admin_url: String,
-        id_token: String,
-        api_url: String,
-        trustchain_url: String,
-    ) -> Result<Self, Error> {
+    pub fn new(admin_url: String, id_token: String, trustchain_url: String) -> Result<Self, Error> {
         let headers = [
             (ACCEPT, "application/json"),
             (AUTHORIZATION, &format!("Bearer {}", id_token)),
@@ -44,8 +37,6 @@ impl Admin {
             client,
             admin_url,
             trustchain_url,
-            api_url,
-            id_token,
         })
     }
 
