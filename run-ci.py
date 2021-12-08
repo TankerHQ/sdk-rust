@@ -122,10 +122,9 @@ def bind_gen(
 
 
 class Builder:
-    def __init__(self, *, src_path: Path, tanker_source: TankerSource, profile: str):
+    def __init__(self, *, src_path: Path, profile: str):
         self.src_path = src_path
         self.profile = profile
-        self.tanker_source = tanker_source
         self.platform = tankerci.conan.get_profile_key("settings.os", profile)
         self.sdk = None
         if self.platform == "iOS":
@@ -238,12 +237,17 @@ class Builder:
         if self._is_windows_target:
             shutil.copyfile(native_path / "ctanker.rs", mingw_path / "ctanker.rs")
 
-    def prepare(self, update: bool, tanker_ref: Optional[str] = None) -> None:
+    def prepare(
+        self,
+        update: bool,
+        tanker_source: TankerSource,
+        tanker_ref: Optional[str] = None,
+    ) -> None:
         tanker_deployed_ref = tanker_ref
-        if self.tanker_source == TankerSource.DEPLOYED and not tanker_ref:
+        if tanker_source == TankerSource.DEPLOYED and not tanker_ref:
             tanker_deployed_ref = "tanker/latest-stable@"
         tankerci.conan.install_tanker_source(
-            self.tanker_source,
+            tanker_source,
             output_path=Path("conan") / "out",
             profiles=[self.profile],
             update=update,
@@ -315,14 +319,11 @@ def prepare(
     tanker_ref: Optional[str] = None,
 ):
     for profile in profiles:
-        builder = Builder(
-            src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
-        )
-        builder.prepare(update, tanker_ref)
+        builder = Builder(src_path=Path.cwd(), profile=profile)
+        builder.prepare(update, tanker_source, tanker_ref)
 
 
 def build(
-    tanker_source: TankerSource,
     profiles: List[str],
     *,
     test: bool = False,
@@ -330,9 +331,7 @@ def build(
     if os.environ.get("CI"):
         os.environ["RUSTFLAGS"] = "-D warnings"
     for profile in profiles:
-        builder = Builder(
-            src_path=Path.cwd(), tanker_source=tanker_source, profile=profile
-        )
+        builder = Builder(src_path=Path.cwd(), profile=profile)
         # build is implied with test
         if test:
             builder.test()
@@ -369,12 +368,6 @@ def main() -> None:
     build_parser.add_argument(
         "--profile", dest="profiles", action="append", required=True
     )
-    build_parser.add_argument(
-        "--use-tanker",
-        type=TankerSource,
-        default=TankerSource.EDITABLE,
-        dest="tanker_source",
-    )
     build_parser.add_argument("--test", action="store_true")
 
     prepare_parser = subparsers.add_parser("prepare")
@@ -410,7 +403,6 @@ def main() -> None:
 
     if args.command == "build":
         build(
-            args.tanker_source,
             args.profiles,
             test=args.test,
         )

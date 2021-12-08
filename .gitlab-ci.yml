@@ -239,7 +239,7 @@ check/native-from-sources/ios/arm:
   extends:
     - .rules/check/deployed-native
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build --test --use-tanker=deployed $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home build --test $TANKER_PROFILES
 
 check/deployed-native/linux:
   extends:
@@ -297,7 +297,7 @@ check/deployed-native/ios/arm:
   dependencies: []
   script:
     - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=upstream $TANKER_PROFILES
-    - poetry run python run-ci.py --isolate-conan-user-home build --test --use-tanker=upstream $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home build --test $TANKER_PROFILES
 
 check/downstream/linux:
   extends:
