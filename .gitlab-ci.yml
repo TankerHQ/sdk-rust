@@ -134,37 +134,37 @@ stages:
   script:
     - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE $TANKER_PROFILES
 
-prepare/linux:
+prepare/deployed/linux:
   extends:
     - .profiles/linux
     - .prepare
 
-prepare/windows:
+prepare/deployed/windows:
   extends:
     - .profiles/windows
     - .prepare
 
-prepare/android:
+prepare/deployed/android:
   extends:
     - .profiles/android
     - .prepare
 
-prepare/macos/x86_64:
+prepare/deployed/macos/x86_64:
   extends:
     - .profiles/macos/x86_64
     - .prepare
 
-prepare/macos/arm:
+prepare/deployed/macos/arm:
   extends:
     - .profiles/macos/arm
     - .prepare
 
-prepare/ios/x86_64:
+prepare/deployed/ios/x86_64:
   extends:
     - .profiles/ios/x86_64
     - .prepare
 
-prepare/ios/arm:
+prepare/deployed/ios/arm:
   extends:
     - .profiles/ios/arm
     - .prepare
@@ -231,7 +231,7 @@ check/native-from-sources/ios/arm:
 
 .rules/check/deployed-native:
   rules:
-    - !reference [.rules/mr/manual, rules]
+    - !reference [.rules/mr/auto, rules]
     - !reference [.rules/web/auto, rules]
 
 .check/deployed-native:
@@ -246,49 +246,49 @@ check/deployed-native/linux:
     - .profiles/linux
     - .check/deployed-native
   needs:
-    - prepare/linux
+    - prepare/deployed/linux
 
 check/deployed-native/windows:
   extends:
     - .profiles/windows
     - .check/deployed-native
   needs:
-    - prepare/windows
+    - prepare/deployed/windows
 
 check/deployed-native/android:
   extends:
     - .profiles/android
     - .check/deployed-native
   needs:
-    - prepare/android
+    - prepare/deployed/android
 
 check/deployed-native/macos/x86_64:
   extends:
     - .profiles/macos/x86_64
     - .check/deployed-native
   needs:
-    - prepare/macos/x86_64
+    - prepare/deployed/macos/x86_64
 
 check/deployed-native/macos/arm:
   extends:
     - .profiles/macos/arm
     - .check/deployed-native
   needs:
-    - prepare/macos/arm
+    - prepare/deployed/macos/arm
 
 check/deployed-native/ios/x86_64:
   extends:
     - .profiles/ios/x86_64
     - .check/deployed-native
   needs:
-    - prepare/ios/x86_64
+    - prepare/deployed/ios/x86_64
 
 check/deployed-native/ios/arm:
   extends:
     - .profiles/ios/arm
     - .check/deployed-native
   needs:
-    - prepare/ios/arm
+    - prepare/deployed/ios/arm
 
 .check/downstream:
   stage: check
@@ -354,13 +354,13 @@ deploy:
     - poetry run python run-ci.py reset-branch $UPSTREAM_BRANCH_NAME
     - poetry run python run-ci.py deploy --version $SDK_RUST_RELEASE_VERSION --registry $SDK_RUST_CARGO_REGISTRY
   needs:
-    - prepare/linux
-    - prepare/windows
-    - prepare/android
-    - prepare/macos/x86_64
-    - prepare/macos/arm
-    - prepare/ios/x86_64
-    - prepare/ios/arm
+    - prepare/deployed/linux
+    - prepare/deployed/windows
+    - prepare/deployed/android
+    - prepare/deployed/macos/x86_64
+    - prepare/deployed/macos/arm
+    - prepare/deployed/ios/x86_64
+    - prepare/deployed/ios/arm
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
