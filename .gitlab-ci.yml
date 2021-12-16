@@ -1,7 +1,7 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /common.yml
-  ref: 2021-10-13-215
+  ref: 2021-12-16-236
 
 ############
 # Workflow #
@@ -66,14 +66,10 @@ stages:
 ############
 
 .profiles/linux:
-  extends:
-    - .tags/linux
   variables:
     TANKER_PROFILES: --profile linux-release
 
 .profiles/windows:
-  extends:
-    - .tags/windows
   before_script:
     # Powershell doesn't split env variable when expanding it.
     # So, we are using the native syntax to create an array, which will be correctly expanded.
@@ -138,16 +134,19 @@ prepare/deployed/linux:
   extends:
     - .profiles/linux
     - .prepare
+  tags: !reference [.tags/linux, tags]
 
 prepare/deployed/windows:
   extends:
     - .profiles/windows
     - .prepare
+  tags: !reference [.tags/windows, tags]
 
 prepare/deployed/android:
   extends:
     - .profiles/android
     - .prepare
+  tags: !reference [.tags/linux, tags]
 
 prepare/deployed/macos/x86_64:
   extends:
@@ -188,11 +187,13 @@ check/native-from-sources/linux:
   extends:
     - .profiles/linux
     - .check/native-from-sources
+  tags: !reference [.tags/compilation-linux, tags]
 
 check/native-from-sources/windows:
   extends:
     - .profiles/windows
     - .check/native-from-sources
+  tags: !reference [.tags/compilation-windows, tags]
 
 check/native-from-sources/android:
   extends:
@@ -247,6 +248,7 @@ check/deployed-native/linux:
     - .check/deployed-native
   needs:
     - prepare/deployed/linux
+  tags: !reference [.tags/linux, tags]
 
 check/deployed-native/windows:
   extends:
@@ -254,6 +256,7 @@ check/deployed-native/windows:
     - .check/deployed-native
   needs:
     - prepare/deployed/windows
+  tags: !reference [.tags/windows, tags]
 
 check/deployed-native/android:
   extends:
@@ -261,6 +264,7 @@ check/deployed-native/android:
     - .check/deployed-native
   needs:
     - prepare/deployed/android
+  tags: !reference [.tags/linux, tags]
 
 check/deployed-native/macos/x86_64:
   extends:
@@ -304,18 +308,21 @@ check/downstream/linux:
     - .rules/check/downstream/linux
     - .check/downstream
     - .profiles/linux
+  tags: !reference [.tags/linux, tags]
 
 check/downstream/windows:
   extends:
     - .rules/check/downstream/windows
     - .check/downstream
     - .profiles/windows/artifacts
+  tags: !reference [.tags/windows, tags]
 
 check/downstream/android:
   extends:
     - .rules/check/downstream/android
     - .check/downstream
     - .profiles/android
+  tags: !reference [.tags/linux, tags]
 
 check/downstream/ios/x86_64:
   extends:
@@ -348,7 +355,6 @@ check/downstream/macos/arm:
 deploy:
   stage: deploy
   extends:
-    - .tags/linux
     - .rules/deploy/rust
   script:
     - poetry run python run-ci.py reset-branch $UPSTREAM_BRANCH_NAME
@@ -364,3 +370,4 @@ deploy:
   release:
     description: sdk-rust v$SDK_RUST_RELEASE_VERSION
     tag_name: v$SDK_RUST_RELEASE_VERSION
+  tags: !reference [.tags/linux, tags]
