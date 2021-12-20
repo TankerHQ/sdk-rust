@@ -79,3 +79,84 @@ async fn resource_id_of_different_enc_sess_are_different() -> Result<(), Error> 
     assert_ne!(alice_sess.get_resource_id(), bob_sess.get_resource_id());
     Ok(())
 }
+
+const ENCRYPTION_SESSION_OVERHEAD: usize = 57;
+const ENCRYPTION_SESSION_PADDED_OVERHEAD: usize = ENCRYPTION_SESSION_OVERHEAD + 1;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn encrypt_session_padding_auto_by_default() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let data = b"my clear data is clear!";
+    let length_with_padme = 24;
+    let sess = alice.create_encryption_session(&Default::default()).await?;
+    let encrypted = sess.encrypt(data as &[u8]).await?;
+
+    assert_eq!(
+        encrypted.len() - ENCRYPTION_SESSION_PADDED_OVERHEAD,
+        length_with_padme
+    );
+
+    let decrypted = alice.decrypt(encrypted).await?;
+    assert_eq!(decrypted, data);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn encrypt_session_padding_auto() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let data = b"my clear data is clear!";
+    let length_with_padme = 24;
+    let options = EncryptionOptions::new().padding_step(Padding::Auto);
+    let sess = alice.create_encryption_session(&options).await?;
+    let encrypted = sess.encrypt(data as &[u8]).await?;
+
+    assert_eq!(
+        encrypted.len() - ENCRYPTION_SESSION_PADDED_OVERHEAD,
+        length_with_padme
+    );
+
+    let decrypted = alice.decrypt(encrypted).await?;
+    assert_eq!(decrypted, data);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn encrypt_session_padding_off() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let data = b"L'Assommoir";
+    let options = EncryptionOptions::new().padding_step(Padding::Off);
+    let sess = alice.create_encryption_session(&options).await?;
+    let encrypted = sess.encrypt(data as &[u8]).await?;
+
+    assert_eq!(encrypted.len() - ENCRYPTION_SESSION_OVERHEAD, data.len());
+
+    let decrypted = alice.decrypt(encrypted).await?;
+    assert_eq!(decrypted, data);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn encrypt_session_padding_step() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let data = b"Au Bonheur des Dames";
+    let options = EncryptionOptions::new().padding_step(Padding::with_step(13)?);
+    let sess = alice.create_encryption_session(&options).await?;
+    let encrypted = sess.encrypt(data as &[u8]).await?;
+
+    assert_eq!(
+        (encrypted.len() - ENCRYPTION_SESSION_PADDED_OVERHEAD) % 13_usize,
+        0
+    );
+
+    let decrypted = alice.decrypt(encrypted).await?;
+    assert_eq!(decrypted, data);
+    Ok(())
+}

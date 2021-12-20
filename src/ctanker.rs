@@ -584,7 +584,7 @@ impl CTankerLib {
     ) -> Result<Vec<u8>, Error> {
         let encrypted_size = tanker_call!(
             self,
-            tanker_encryption_session_encrypted_size(data.len() as u64)
+            tanker_encryption_session_encrypted_size(csess, data.len() as u64)
         ) as usize;
         let mut encrypted = Vec::with_capacity(encrypted_size);
 
