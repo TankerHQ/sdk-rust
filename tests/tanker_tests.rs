@@ -60,19 +60,6 @@ async fn start_stop_session() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn self_revoke() -> Result<(), Error> {
-    let app = TestApp::get().await;
-    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
-
-    #[allow(deprecated)]
-    tanker.revoke_device(&tanker.device_id()?).await?;
-    let err = tanker.encrypt(b"F", &Default::default()).await.unwrap_err();
-    assert_eq!(err.code(), ErrorCode::DeviceRevoked);
-
-    tanker.stop().await
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn has_correct_device_list() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;

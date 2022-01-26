@@ -528,27 +528,6 @@ impl CTankerLib {
         fut.await
     }
 
-    pub async unsafe fn revoke_device(
-        &self,
-        ctanker: CTankerPtr,
-        device_id: &str,
-    ) -> Result<(), Error> {
-        let cdevice_id = CString::new(device_id).map_err(|_| {
-            Error::new(
-                ErrorCode::InvalidArgument,
-                "device_id is not a valid CString".into(),
-            )
-        })?;
-
-        let fut = unsafe {
-            CFuture::new(tanker_call!(
-                self,
-                tanker_revoke_device(ctanker.0, cdevice_id.as_ptr(),)
-            ))
-        };
-        fut.await
-    }
-
     pub async unsafe fn encryption_session_open(
         &self,
         ctanker: CTankerPtr,

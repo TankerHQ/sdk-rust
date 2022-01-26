@@ -336,18 +336,6 @@ impl Core {
         }
     }
 
-    /// Revokes one of the user's devices.
-    ///
-    /// The Tanker status must be `Ready`.
-    #[deprecated(since = "2.8.0")]
-    pub async fn revoke_device(&self, device_id: &str) -> Result<(), Error> {
-        unsafe {
-            CTankerLib::get()
-                .revoke_device(self.ctanker, device_id)
-                .await
-        }
-    }
-
     /// Create an encryption session that will allow performing multiple encryption operations with a reduced number of keys.
     ///
     /// # Arguments
