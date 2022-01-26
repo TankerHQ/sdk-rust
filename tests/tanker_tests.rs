@@ -64,10 +64,13 @@ async fn has_correct_device_list() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
 
+    #[allow(deprecated)]
     let list = tanker.device_list().await?;
     assert_eq!(list.len(), 1);
     assert!(!list[0].revoked);
-    assert_eq!(list[0].id, tanker.device_id().unwrap());
+    #[allow(deprecated)]
+    let device_id = tanker.device_id().unwrap();
+    assert_eq!(list[0].id, device_id);
 
     tanker.stop().await
 }

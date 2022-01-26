@@ -58,6 +58,7 @@ impl Core {
     /// The current device's ID.
     ///
     /// The Tanker status must be `Ready`.
+    #[deprecated(since = "2.27.0")]
     pub fn device_id(&self) -> Result<String, Error> {
         unsafe { block_on(CTankerLib::get().device_id(self.ctanker)) }
     }
@@ -65,6 +66,7 @@ impl Core {
     /// The user's devices list.
     ///
     /// The Tanker status must be `Ready`.
+    #[deprecated(since = "2.27.0")]
     pub async fn device_list(&self) -> Result<Vec<Device>, Error> {
         unsafe { CTankerLib::get().device_list(self.ctanker).await }
     }
