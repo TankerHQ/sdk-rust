@@ -8,8 +8,8 @@ pub use admin::Admin;
 mod test_app;
 pub use test_app::TestApp;
 
-use blake2::digest::{Update, VariableOutput};
-use blake2::VarBlake2b;
+use blake2::digest::{consts, VariableOutput};
+use blake2::{Blake2b, Blake2bVar};
 use ed25519_dalek::{Keypair, Signer};
 use rand::{rngs::OsRng, Rng};
 use serde_json::{json, Value};
@@ -24,25 +24,32 @@ const USER_SECRET_SIZE: usize = 32;
 const SIGNATURE_SIZE: usize = 64;
 
 pub fn hash_user_id(app_id: &[u8], user_id: &str) -> Vec<u8> {
-    let mut hasher = VarBlake2b::new(BLOCK_HASH_SIZE).unwrap();
+    use blake2::digest::Update;
+
+    let mut hasher = Blake2bVar::new(BLOCK_HASH_SIZE).unwrap();
     hasher.update(user_id.as_bytes());
     hasher.update(app_id);
     hasher.finalize_boxed().to_vec()
 }
 
 pub fn generate_user_secret(hashed_user_id: &[u8]) -> Vec<u8> {
+    use blake2::Digest;
+
     let random_bytes: [u8; USER_SECRET_SIZE - 1] = rand::thread_rng().gen();
-    let mut hasher = VarBlake2b::new(1).unwrap();
+    let mut hasher = Blake2b::<consts::U1>::new();
     hasher.update(&random_bytes);
     hasher.update(hashed_user_id);
 
     let mut user_secret = random_bytes.to_vec();
-    hasher.finalize_variable(|h| user_secret.push(h[0]));
+    let res = hasher.finalize();
+    user_secret.push(res[0]);
     user_secret
 }
 
 pub fn generate_app_id(app_secret: &[u8]) -> Vec<u8> {
-    let mut hasher = VarBlake2b::new(BLOCK_HASH_SIZE).unwrap();
+    use blake2::digest::Update;
+
+    let mut hasher = Blake2bVar::new(BLOCK_HASH_SIZE).unwrap();
     hasher.update(&[APP_CREATION_NATURE]);
     hasher.update(&[0u8; AUTHOR_SIZE]);
     hasher.update(&app_secret[app_secret.len() - APP_PUBLIC_KEY_SIZE..]);

@@ -1,5 +1,5 @@
 use blake2::digest::{Update, VariableOutput};
-use blake2::VarBlake2b;
+use blake2::Blake2bVar;
 use ed25519_dalek::Keypair;
 
 pub fn serialized_root_block(sign_keypair: &Keypair) -> Vec<u8> {
@@ -51,8 +51,8 @@ fn serialized_block(
 }
 
 fn block_hash(nature: u64, author: &[u8; 32], payload: &[u8]) -> Vec<u8> {
-    let mut hasher = VarBlake2b::new(crate::identity::BLOCK_HASH_SIZE).unwrap();
-    hasher.update(serialized_varint(nature).into_iter().collect::<Vec<_>>());
+    let mut hasher = Blake2bVar::new(crate::identity::BLOCK_HASH_SIZE).unwrap();
+    hasher.update(&serialized_varint(nature).into_iter().collect::<Vec<_>>());
     hasher.update(author);
     hasher.update(payload);
     hasher.finalize_boxed().to_vec()
