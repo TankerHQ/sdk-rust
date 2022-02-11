@@ -71,6 +71,8 @@ stages:
 
 .profiles/windows:
   before_script:
+    - poetry run python -m pip install --upgrade pip
+    - poetry install
     # Powershell doesn't split env variable when expanding it.
     # So, we are using the native syntax to create an array, which will be correctly expanded.
     - $TANKER_PROFILES = "--profile", "vs2019-release-shared"
