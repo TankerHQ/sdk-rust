@@ -22,7 +22,7 @@ double-checked-cell-async = "2.0.2"
 rand = "0.7.3"
 base64 = "0.13"
 variant_count = "1.0"
-blake2 = "0.9"
+blake2 = "0.10.2"
 ed25519-dalek = "1.0"
 x25519-dalek = "1.1"
 
