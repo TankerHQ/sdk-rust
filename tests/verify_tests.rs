@@ -191,12 +191,17 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
     let verif = Verification::OIDCIDToken(oidc_token.to_owned());
+
+    let nonce = tanker.create_oidc_nonce().await?;
+    tanker._set_oidc_test_nonce(&nonce).await?;
     tanker
         .register_identity(&verif, &VerificationOptions::new())
         .await?;
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
+    let nonce = tanker.create_oidc_nonce().await?;
+    tanker._set_oidc_test_nonce(&nonce).await?;
     tanker.start(&martine_identity).await?;
     assert_eq!(tanker.status(), Status::IdentityVerificationNeeded);
     tanker

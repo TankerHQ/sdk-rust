@@ -86,6 +86,21 @@ impl Core {
         unsafe { CTankerLib::get().stop(self.ctanker).await }
     }
 
+    /// Creates a nonce to use during Oidc authorization code flow
+    pub async fn create_oidc_nonce(&self) -> Result<String, Error> {
+        unsafe { CTankerLib::get().create_oidc_nonce(self.ctanker).await }
+    }
+
+    /// Set the nonce to use for Oidc verification
+    #[doc(hidden)]
+    pub async fn _set_oidc_test_nonce(&self, nonce: &str) -> Result<(), Error> {
+        unsafe {
+            CTankerLib::get()
+                .set_oidc_test_nonce(self.ctanker, nonce)
+                .await
+        }
+    }
+
     /// Registers the user's identity with which [start()](Self::start) has been called, and starts the session.
     ///
     /// The Tanker status must be `IdentityRegistrationNeeded`.
