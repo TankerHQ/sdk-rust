@@ -43,12 +43,13 @@ impl TestApp {
     async fn new() -> Self {
         let config = Config::new();
         let admin = Admin::new(
-            config.admin_url.clone(),
-            config.id_token.clone(),
+            config.app_management_token.clone(),
+            config.app_management_url.clone(),
+            config.environment_name.clone(),
             config.trustchain_url.clone(),
         )
         .unwrap();
-        let app = admin.create_app("rust-test", true).await.unwrap();
+        let app = admin.create_app("rust-test").await.unwrap();
         Self { config, admin, app }
     }
 

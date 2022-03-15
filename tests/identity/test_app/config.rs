@@ -24,20 +24,22 @@ pub struct OidcConfig {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub id_token: String,
+    pub app_management_token: String,
+    pub app_management_url: String,
     pub api_url: String,
+    pub environment_name: String,
     pub trustchain_url: String,
-    pub admin_url: String,
     pub oidc_config: OidcConfig,
 }
 
 impl Config {
     pub fn new() -> Self {
         Self {
-            id_token: safe_get_env("TANKER_ID_TOKEN"),
+            app_management_token: safe_get_env("TANKER_MANAGEMENT_API_ACCESS_TOKEN"),
+            app_management_url: safe_get_env("TANKER_MANAGEMENT_API_URL"),
             api_url: safe_get_env("TANKER_APPD_URL"),
+            environment_name: safe_get_env("TANKER_MANAGEMENT_API_DEFAULT_ENVIRONMENT_NAME"),
             trustchain_url: safe_get_env("TANKER_TRUSTCHAIND_URL"),
-            admin_url: safe_get_env("TANKER_ADMIND_URL"),
             oidc_config: OidcConfig::new(),
         }
     }
