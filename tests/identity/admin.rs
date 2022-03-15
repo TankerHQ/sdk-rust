@@ -2,29 +2,30 @@ mod rest;
 
 pub use rest::admin_rest_request;
 
-mod block;
-
-use block::serialized_root_block;
-
 use super::App;
-use ed25519_dalek::Keypair;
-use rand::rngs::OsRng;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
+use serde_json::json;
 use serde_json::Value;
 use tankersdk::Error;
 
 #[derive(Debug)]
 pub struct Admin {
+    app_management_url: String,
     client: reqwest::Client,
-    admin_url: String,
+    environment_name: String,
     trustchain_url: String,
 }
 
 impl Admin {
-    pub fn new(admin_url: String, id_token: String, trustchain_url: String) -> Result<Self, Error> {
+    pub fn new(
+        app_management_token: String,
+        app_management_url: String,
+        environment_name: String,
+        trustchain_url: String,
+    ) -> Result<Self, Error> {
         let headers = [
             (ACCEPT, "application/json"),
-            (AUTHORIZATION, &format!("Bearer {}", id_token)),
+            (AUTHORIZATION, &format!("Bearer {}", app_management_token)),
         ]
         .iter()
         .map(|(k, v)| (k.clone(), HeaderValue::from_str(v).unwrap()))
@@ -34,59 +35,27 @@ impl Admin {
             .build()
             .unwrap();
         Ok(Self {
+            app_management_url,
             client,
-            admin_url,
+            environment_name,
             trustchain_url,
         })
     }
 
-    pub async fn get_environments(&self) -> Result<Vec<String>, Error> {
-        let reply =
-            admin_rest_request(self.client.get(format!("{}/environments", self.admin_url))).await?;
-        let environments_ids = reply["environments"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v["id"].as_str().unwrap().to_owned())
-            .collect::<Vec<_>>();
+    pub async fn create_app(&self, name: &str) -> Result<App, Error> {
+        let reply = admin_rest_request(self.client.post(&self.make_url("")).json(&json!({
+            "name": name,
+            "environment_name": &self.environment_name,
+        })))
+        .await?;
 
-        Ok(environments_ids)
-    }
-
-    pub async fn create_app(&self, name: &str, is_test: bool) -> Result<App, Error> {
-        let envs = self.get_environments().await?;
-        assert!(!envs.is_empty(), "found 0 environments");
-
-        let sign_keypair = Keypair::generate(&mut OsRng {});
-        let private_key_b64 = base64::encode(sign_keypair.to_bytes().as_ref());
-
-        let root_block = serialized_root_block(&sign_keypair);
-        let serialized_block = base64::encode(&root_block);
-
-        let mut json = [
-            ("name", name),
-            ("root_block", &serialized_block),
-            ("environment_id", &envs[0]),
-        ]
-        .iter()
-        .map(|(k, v)| (k.to_string(), Value::from(*v)))
-        .collect::<serde_json::Map<_, _>>();
-        if is_test {
-            json.insert(
-                "private_signature_key".to_owned(),
-                Value::String(private_key_b64.clone()),
-            );
-        }
-        let json: Value = json.into();
-
-        let reply = admin_rest_request(self.client.post(&self.make_url("")).json(&json)).await?;
         let json_app = reply["app"].as_object().unwrap();
 
         Ok(App {
             url: self.trustchain_url.clone(),
             id: json_app["id"].as_str().unwrap().to_owned(),
             auth_token: json_app["auth_token"].as_str().unwrap().to_owned(),
-            private_key: private_key_b64,
+            private_key: json_app["secret"].as_str().unwrap().to_owned(),
         })
     }
 
@@ -132,6 +101,6 @@ impl Admin {
     fn make_url(&self, id: &str) -> String {
         let id = base64::decode(id).unwrap();
         let id = base64::encode_config(id, base64::URL_SAFE_NO_PAD);
-        format!("{}/apps/{}", &self.admin_url, id)
+        format!("{}/v1/apps/{}", &self.app_management_url, id)
     }
 }

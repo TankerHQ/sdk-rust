@@ -21,7 +21,6 @@ const APP_PUBLIC_KEY_SIZE: usize = 32;
 const AUTHOR_SIZE: usize = 32;
 const BLOCK_HASH_SIZE: usize = 32;
 const USER_SECRET_SIZE: usize = 32;
-const SIGNATURE_SIZE: usize = 64;
 
 pub fn hash_user_id(app_id: &[u8], user_id: &str) -> Vec<u8> {
     use blake2::digest::Update;
