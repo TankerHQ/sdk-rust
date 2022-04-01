@@ -6,7 +6,7 @@ use identity::TestApp;
 use std::cmp::min;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tankersdk::{Error, ErrorCode};
+use tankersdk::{EncryptionOptions, Error, ErrorCode, Padding};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn encrypt_stream_and_decrypt() -> Result<(), Error> {
@@ -53,6 +53,37 @@ async fn encrypt_stream_and_decrypt_stream() -> Result<(), futures::io::Error> {
         .encrypt_stream(plaintext.as_slice(), &Default::default())
         .await?;
     let mut decrypted_stream = tanker.decrypt_stream(encrypted_stream).await?;
+    let mut decrypted = Vec::new();
+    decrypted_stream.read_to_end(&mut decrypted).await.unwrap();
+    tanker.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn encrypt_stream_with_padding() -> Result<(), futures::io::Error> {
+    let app = TestApp::get().await;
+    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
+
+    // We want to stress the system a bit here. Tanker makes 1MB chunks, force at least 2 chunks
+    let plaintext = b"123"
+        .repeat(1024 * 1024)
+        .into_iter()
+        .chain(vec![1, 2].into_iter())
+        .collect::<Vec<_>>();
+    let mut encrypted_stream = tanker
+        .encrypt_stream(
+            plaintext.as_slice(),
+            &EncryptionOptions::new().padding_step(Padding::with_step(500)?),
+        )
+        .await?;
+    let mut encrypted = Vec::new();
+    encrypted_stream.read_to_end(&mut encrypted).await.unwrap();
+
+    assert_eq!(encrypted.len(), 3146248);
+
+    let mut decrypted_stream = tanker.decrypt_stream(encrypted.as_slice()).await?;
     let mut decrypted = Vec::new();
     decrypted_stream.read_to_end(&mut decrypted).await.unwrap();
     tanker.stop().await?;
