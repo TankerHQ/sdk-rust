@@ -8,9 +8,9 @@ authors = ["Your Name <you@example.com>"]
 python = "^3.7"
 
 [tool.poetry.dev-dependencies]
-mypy = "^0.790"
-flake8 = "^3.8.3"
-black = "^19.3b0"
+mypy = "^0.942"
+flake8 = "^4.0.1"
+black = "^22.3.0"
 tankerci = { version = ">= 2021.9.3584", source = "gitlab" }
 
 [[tool.poetry.source]]
