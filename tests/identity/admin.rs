@@ -69,7 +69,6 @@ impl Admin {
         id: &str,
         oidc_client_id: Option<&str>,
         oidc_provider: Option<&str>,
-        with_session_token: Option<bool>,
         preverified_verification: Option<bool>,
     ) -> Result<(), Error> {
         let url = self.make_url(id);
@@ -79,12 +78,6 @@ impl Admin {
         }
         if let Some(oidc_provider) = oidc_provider {
             json.insert("oidc_provider".to_owned(), oidc_provider.into());
-        }
-        if let Some(with_session_token) = with_session_token {
-            json.insert(
-                "session_certificates_enabled".to_owned(),
-                with_session_token.into(),
-            );
         }
         if let Some(preverified_verification) = preverified_verification {
             json.insert(
