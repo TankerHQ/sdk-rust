@@ -203,6 +203,7 @@ check/native-from-sources/android:
     - .check/native-from-sources
   variables:
     TANKER_PROFILES: --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+  tags: !reference [.tags/compilation-linux, tags]
 
 check/native-from-sources/macos/x86_64:
   extends:

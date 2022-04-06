@@ -217,6 +217,33 @@ impl CTankerLib {
         fut.await
     }
 
+    pub async unsafe fn create_oidc_nonce(&self, ctanker: CTankerPtr) -> Result<String, Error> {
+        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_create_oidc_nonce(ctanker.0))) };
+        fut.await
+    }
+
+    #[doc(hidden)]
+    pub async unsafe fn set_oidc_test_nonce(
+        &self,
+        ctanker: CTankerPtr,
+        nonce: &str,
+    ) -> Result<(), Error> {
+        let cnonce = CString::new(nonce).map_err(|_| {
+            Error::new(
+                ErrorCode::InvalidArgument,
+                "nonce is not a valid CString".into(),
+            )
+        })?;
+
+        let fut = unsafe {
+            CFuture::new(tanker_call!(
+                self,
+                tanker_set_oidc_test_nonce(ctanker.0, cnonce.as_ptr())
+            ))
+        };
+        fut.await
+    }
+
     pub async unsafe fn generate_verification_key(
         &self,
         ctanker: CTankerPtr,
