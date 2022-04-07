@@ -81,7 +81,6 @@ impl TestApp {
         &self,
         oidc_client_id: Option<&str>,
         oidc_provider: Option<&str>,
-        with_session_token: Option<bool>,
         preverified_verification: Option<bool>,
     ) -> Result<(), Error> {
         self.admin
@@ -89,7 +88,6 @@ impl TestApp {
                 &self.app.id,
                 oidc_client_id,
                 oidc_provider,
-                with_session_token,
                 preverified_verification,
             )
             .await
