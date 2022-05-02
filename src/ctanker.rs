@@ -222,7 +222,6 @@ impl CTankerLib {
         fut.await
     }
 
-    #[doc(hidden)]
     pub async unsafe fn set_oidc_test_nonce(
         &self,
         ctanker: CTankerPtr,

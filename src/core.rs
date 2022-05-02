@@ -92,8 +92,7 @@ impl Core {
     }
 
     /// Set the nonce to use for Oidc verification
-    #[doc(hidden)]
-    pub async fn _set_oidc_test_nonce(&self, nonce: &str) -> Result<(), Error> {
+    pub async fn set_oidc_test_nonce(&self, nonce: &str) -> Result<(), Error> {
         unsafe {
             CTankerLib::get()
                 .set_oidc_test_nonce(self.ctanker, nonce)
