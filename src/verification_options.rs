@@ -3,6 +3,7 @@
 #[non_exhaustive]
 pub struct VerificationOptions {
     pub(crate) with_session_token: bool,
+    pub(crate) allow_e2e_method_switch: bool,
 }
 
 impl VerificationOptions {
@@ -15,13 +16,20 @@ impl VerificationOptions {
         self.with_session_token = true;
         self
     }
+
+    /// Allow switching to and from E2E verification methods
+    pub fn allow_e2e_method_switch(mut self) -> Self {
+        self.allow_e2e_method_switch = true;
+        self
+    }
 }
 
-#[allow(clippy::derivable_impls)] // with_session_token's Default is not obvious
+#[allow(clippy::derivable_impls)] // The Defaults for these options are not obvious
 impl Default for VerificationOptions {
     fn default() -> Self {
         Self {
             with_session_token: false,
+            allow_e2e_method_switch: false,
         }
     }
 }

@@ -19,6 +19,7 @@ pub enum VerificationMethod {
     PhoneNumber(String),
     PreverifiedEmail(String),
     PreverifiedPhoneNumber(String),
+    E2ePassphrase,
 }
 
 #[derive(FromPrimitive)]
@@ -33,6 +34,7 @@ enum CMethodType {
     PhoneNumber = 5,
     PreverifiedEmail = 6,
     PreverifiedPhoneNumber = 7,
+    E2ePassphrase = 8,
 
     #[num_enum(default)]
     Invalid,
@@ -71,6 +73,7 @@ impl VerificationMethod {
                     preverified_phone_number,
                 ))
             }
+            CMethodType::E2ePassphrase => Ok(VerificationMethod::E2ePassphrase),
             CMethodType::Invalid => Err(Error::new(
                 ErrorCode::InternalError,
                 format!("Invalid verification method type {}", ctype),

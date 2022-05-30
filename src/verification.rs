@@ -3,7 +3,7 @@ use crate::ctanker::{
 };
 use std::ffi::CString;
 
-const CVERIFICATION_VERSION: u8 = 5;
+const CVERIFICATION_VERSION: u8 = 6;
 const CEMAIL_VERIFICATION_VERSION: u8 = 1;
 const CPHONE_NUMBER_VERIFICATION_VERSION: u8 = 1;
 
@@ -17,6 +17,7 @@ enum Type {
     PhoneNumber = 5,
     PreverifiedEmail = 6,
     PreverifiedPhoneNumber = 7,
+    E2ePassphrase = 8,
 }
 
 pub(crate) struct CVerificationWrapper {
@@ -50,6 +51,7 @@ impl CVerificationWrapper {
                 },
                 preverified_email: std::ptr::null(),
                 preverified_phone_number: std::ptr::null(),
+                e2e_passphrase: std::ptr::null(),
             },
         }
     }
@@ -137,6 +139,17 @@ impl CVerificationWrapper {
         wrapper
     }
 
+    pub(self) fn with_e2e_passphrase(e2e_passphrase: &str) -> Self {
+        let mut wrapper = Self::new();
+        let cpass = CString::new(e2e_passphrase).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::E2ePassphrase as u8;
+        wrapper.cverif.e2e_passphrase = cpass.as_ptr();
+
+        wrapper.cstrings.push(cpass);
+        wrapper
+    }
+
     pub fn as_cverification_ptr(&self) -> CVerificationPtr {
         CVerificationPtr(&self.cverif)
     }
@@ -159,6 +172,7 @@ pub enum Verification {
     },
     PreverifiedEmail(String),
     PreverifiedPhoneNumber(String),
+    E2ePassphrase(String),
 }
 
 impl Verification {
@@ -182,6 +196,9 @@ impl Verification {
             }
             Verification::PreverifiedPhoneNumber(preverified_phone_number) => {
                 CVerificationWrapper::with_preverified_phone_number(preverified_phone_number)
+            }
+            Verification::E2ePassphrase(e2e_passphrase) => {
+                CVerificationWrapper::with_e2e_passphrase(e2e_passphrase)
             }
         }
     }
