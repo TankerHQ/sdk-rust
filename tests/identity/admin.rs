@@ -54,7 +54,6 @@ impl Admin {
         Ok(App {
             url: self.trustchain_url.clone(),
             id: json_app["id"].as_str().unwrap().to_owned(),
-            auth_token: json_app["auth_token"].as_str().unwrap().to_owned(),
             private_key: json_app["secret"].as_str().unwrap().to_owned(),
         })
     }
