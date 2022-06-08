@@ -29,6 +29,7 @@ pub struct Config {
     pub api_url: String,
     pub environment_name: String,
     pub trustchain_url: String,
+    pub verification_api_token: String,
     pub oidc_config: OidcConfig,
 }
 
@@ -40,6 +41,7 @@ impl Config {
             api_url: safe_get_env("TANKER_APPD_URL"),
             environment_name: safe_get_env("TANKER_MANAGEMENT_API_DEFAULT_ENVIRONMENT_NAME"),
             trustchain_url: safe_get_env("TANKER_TRUSTCHAIND_URL"),
+            verification_api_token: safe_get_env("TANKER_VERIFICATION_API_TEST_TOKEN"),
             oidc_config: OidcConfig::new(),
         }
     }

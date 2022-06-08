@@ -65,16 +65,20 @@ impl TestApp {
         &self.config.trustchain_url
     }
 
-    pub fn auth_token(&self) -> &str {
-        &self.app.auth_token
+    pub fn verification_api_token(&self) -> &str {
+        &self.config.verification_api_token
     }
 
     pub async fn get_email_verification_code(&self, email: &str) -> Result<String, Error> {
-        self.app.get_email_verification_code(email).await
+        self.app
+            .get_email_verification_code(&self.config.verification_api_token, email)
+            .await
     }
 
     pub async fn get_sms_verification_code(&self, phone_number: &str) -> Result<String, Error> {
-        self.app.get_sms_verification_code(phone_number).await
+        self.app
+            .get_sms_verification_code(&self.config.verification_api_token, phone_number)
+            .await
     }
 
     pub async fn app_update(

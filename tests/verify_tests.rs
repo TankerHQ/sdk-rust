@@ -340,7 +340,7 @@ async fn check_session_token_with_server(
         .post(url)
         .json(&json!({
             "app_id": app.id(),
-            "auth_token": app.auth_token(),
+            "auth_token": app.verification_api_token(),
             "public_identity": public_identity,
             "session_token": session_token,
             "allowed_methods": [{
