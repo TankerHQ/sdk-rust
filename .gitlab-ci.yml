@@ -17,8 +17,15 @@ workflow:
       when: never
     - if: !reference [.if-invalid-native-conan-reference, if]
       when: never
-    # allow everything else
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      variables:
+        CONAN_REMOTE: "artifactory"
+    - if: '$CI_MERGE_REQUEST_TITLE =~ /.*\[preview].*/'
+      variables:
+        CONAN_REMOTE: "artifactory-preview"
     - when: always
+      variables:
+        CONAN_REMOTE: "artifactory-staging"
 
 ###########
 # Default #
@@ -67,7 +74,7 @@ stages:
 
 .profiles/linux:
   variables:
-    TANKER_PROFILES: --profile linux-release
+    TANKER_PROFILES: --profile linux-x86_64
 
 .profiles/windows:
   before_script:
@@ -75,7 +82,7 @@ stages:
     - poetry install
     # Powershell doesn't split env variable when expanding it.
     # So, we are using the native syntax to create an array, which will be correctly expanded.
-    - $TANKER_PROFILES = "--profile", "vs2019-release-shared"
+    - $TANKER_PROFILES = "--profile", "windows-x86_64", "shared"
 
 .profiles/windows/artifacts:
   extends:
@@ -88,31 +95,31 @@ stages:
   extends:
     - .tags/linux
   variables:
-    TANKER_PROFILES: --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+    TANKER_PROFILES: --profile android-armv8 tanker-static http-backend --profile android-x86_64 tanker-static http-backend --profile android-x86 tanker-static http-backend --profile android-armv7 tanker-static http-backend
 
 .profiles/macos/x86_64:
   extends:
     - .tags/macos/x86_64
   variables:
-    TANKER_PROFILES: --profile macos-x86_64-release
+    TANKER_PROFILES: --profile macos-x86_64
 
 .profiles/macos/arm:
   extends:
     - .tags/macos/arm
   variables:
-    TANKER_PROFILES: --profile macos-armv8-release
+    TANKER_PROFILES: --profile macos-armv8
 
 .profiles/ios/x86_64:
   extends:
     - .tags/macos/x86_64
   variables:
-    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-x86_64 http-backend
 
 .profiles/ios/arm:
   extends:
     - .tags/macos/arm
   variables:
-    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-armv8 http-backend
 
 ######################
 # prepare stage #
@@ -130,7 +137,7 @@ stages:
     - .rules/prepare
     - .release-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE $TANKER_PROFILES
 
 prepare/deployed/linux:
   extends:
@@ -181,8 +188,8 @@ prepare/deployed/ios/arm:
     - .rules/native-from-sources
   dependencies: []
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=same-as-branch $TANKER_PROFILES
-    - poetry run python run-ci.py --isolate-conan-user-home build --test $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE prepare --use-tanker=same-as-branch $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE build --test $TANKER_PROFILES
 
 
 check/native-from-sources/linux:
@@ -202,7 +209,7 @@ check/native-from-sources/android:
     - .profiles/android
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile android-armv8-release-static-http_backend --profile android-x86_64-release-static-http_backend --profile android-x86-release-static-http_backend --profile android-armv7-release-static-http_backend
+    TANKER_PROFILES: --profile android-armv8 tanker-static http-backend --profile android-x86_64 tanker-static http-backend --profile android-x86 tanker-static http-backend --profile android-armv7 tanker-static http-backend
   tags: !reference [.tags/compilation-linux, tags]
 
 check/native-from-sources/macos/x86_64:
@@ -210,28 +217,28 @@ check/native-from-sources/macos/x86_64:
     - .profiles/macos/x86_64
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile macos-x86_64-release
+    TANKER_PROFILES: --profile macos-x86_64
 
 check/native-from-sources/macos/arm:
   extends:
     - .profiles/macos/arm
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile macos-armv8-release
+    TANKER_PROFILES: --profile macos-armv8
 
 check/native-from-sources/ios/x86_64:
   extends:
     - .profiles/ios/x86_64
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-x86_64-release-http_backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-x86_64 http-backend
 
 check/native-from-sources/ios/arm:
   extends:
     - .profiles/ios/arm
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile ios-armv8-release-http_backend --profile ios-simulator-armv8-release-http_backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-armv8 http-backend
 
 .rules/check/deployed-native:
   rules:
@@ -243,7 +250,7 @@ check/native-from-sources/ios/arm:
   extends:
     - .rules/check/deployed-native
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home build --test $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE build --test $TANKER_PROFILES
 
 check/deployed-native/linux:
   extends:
@@ -303,8 +310,8 @@ check/deployed-native/ios/arm:
     - .before-script/download-artifacts
   dependencies: []
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home prepare --use-tanker=upstream $TANKER_PROFILES
-    - poetry run python run-ci.py --isolate-conan-user-home build --test $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE prepare --use-tanker=upstream $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE build --test $TANKER_PROFILES
 
 check/downstream/linux:
   extends:
