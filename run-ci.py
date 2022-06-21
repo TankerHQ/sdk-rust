@@ -8,7 +8,7 @@ import sys
 
 import cli_ui as ui  # noqa
 import tankerci
-from tankerci.conan import TankerSource
+from tankerci.conan import Profile, TankerSource
 import tankerci.conan
 import tankerci.git
 import tankerci.gitlab
@@ -50,7 +50,6 @@ def profile_to_rust_target(platform: str, arch: str, sdk: Optional[str]) -> str:
             return "aarch64-apple-darwin"
     elif platform == "iOS":
         if arch == "armv8":
-            # TODO this is Tier 3, wait for a few weeks before being able to build for armv8 simulator
             if sdk == "iphonesimulator":
                 return "aarch64-apple-ios-sim"
             else:
@@ -73,15 +72,19 @@ def get_android_bin_path() -> Path:
         "conan",
         "install",
         "android_ndk_installer/r22b@",
-        "--profile",
-        "android-armv7-release",
+        "--profile:host",
+        "android-armv7",
+        "--profile:build",
+        str(tankerci.conan.get_build_profile()),
     )
     _, out = tankerci.run_captured(
         "conan",
         "info",
         "android_ndk_installer/r22b@",
         "--profile",
-        "android-armv7-release",
+        "android-armv7",
+        "--profile:build",
+        str(tankerci.conan.get_build_profile()),
         "--json",
         "--paths",
     )
@@ -122,14 +125,17 @@ def bind_gen(
 
 
 class Builder:
-    def __init__(self, *, src_path: Path, profile: str):
+    def __init__(
+        self, *, src_path: Path, build_profile: Profile, host_profile: Profile
+    ):
         self.src_path = src_path
-        self.profile = profile
-        self.platform = tankerci.conan.get_profile_key("settings.os", profile)
+        self.host_profile = host_profile
+        self.build_profile = build_profile
+        self.platform = tankerci.conan.get_profile_key("settings.os", str(host_profile[0]))
         self.sdk = None
         if self.platform == "iOS":
-            self.sdk = tankerci.conan.get_profile_key("settings.os.sdk", profile)
-        self.arch = tankerci.conan.get_profile_key("settings.arch", profile)
+            self.sdk = tankerci.conan.get_profile_key("settings.os.sdk", str(host_profile[0]))
+        self.arch = tankerci.conan.get_profile_key("settings.arch", str(host_profile[0]))
         self.target_triplet = profile_to_rust_target(self.platform, self.arch, self.sdk)
 
     @property
@@ -205,9 +211,9 @@ class Builder:
             shutil.copy("libctanker.a", native_path)
 
     def _prepare_profile(self) -> None:
-        conan_out = self.src_path / "conan" / "out" / self.profile
+        conan_out = self.src_path / "conan" / "out" / str(self.host_profile)
         package_path = conan_out / "package"
-        depsConfig = DepsConfig(self.src_path / "conan" / "out" / self.profile)
+        depsConfig = DepsConfig(self.src_path / "conan" / "out" / str(self.host_profile))
 
         self._copy_includes(package_path, depsConfig)
 
@@ -249,7 +255,8 @@ class Builder:
         tankerci.conan.install_tanker_source(
             tanker_source,
             output_path=Path("conan") / "out",
-            profiles=[self.profile],
+            host_profiles=[self.host_profile],
+            build_profile=self.build_profile,
             update=update,
             tanker_deployed_ref=tanker_deployed_ref,
         )
@@ -288,7 +295,7 @@ class Builder:
         self.build()
 
         if not self._is_host_target:
-            ui.info(self.profile, "is a cross-compiled target, skipping tests")
+            ui.info(str(self.host_profile), "is a cross-compiled target, skipping tests")
             return
 
         tankerci.run("cargo", "fmt", "--", "--check", cwd=self.src_path)
@@ -313,25 +320,31 @@ class Builder:
 
 def prepare(
     tanker_source: TankerSource,
-    profiles: List[str],
     *,
+    profiles: List[Profile],
     update: bool = False,
     tanker_ref: Optional[str] = None,
 ):
-    for profile in profiles:
-        builder = Builder(src_path=Path.cwd(), profile=profile)
+    build_profile = tankerci.conan.get_build_profile()
+    for host_profile in profiles:
+        builder = Builder(
+            src_path=Path.cwd(), host_profile=host_profile, build_profile=build_profile
+        )
         builder.prepare(update, tanker_source, tanker_ref)
 
 
 def build(
-    profiles: List[str],
     *,
+    profiles: List[Profile],
     test: bool = False,
 ) -> None:
+    build_profile = tankerci.conan.get_build_profile()
     if os.environ.get("CI"):
         os.environ["RUSTFLAGS"] = "-D warnings"
-    for profile in profiles:
-        builder = Builder(src_path=Path.cwd(), profile=profile)
+    for host_profile in profiles:
+        builder = Builder(
+            src_path=Path.cwd(), host_profile=host_profile, build_profile=build_profile
+        )
         # build is implied with test
         if test:
             builder.test()
@@ -362,17 +375,28 @@ def main() -> None:
         dest="home_isolation",
         default=False,
     )
+    parser.add_argument("--remote", default="artifactory")
     subparsers = parser.add_subparsers(title="subcommands", dest="command")
 
     build_parser = subparsers.add_parser("build")
     build_parser.add_argument(
-        "--profile", dest="profiles", action="append", required=True
+        "--profile",
+        dest="profiles",
+        action="append",
+        required=True,
+        nargs='+',
+        type=str,
     )
     build_parser.add_argument("--test", action="store_true")
 
     prepare_parser = subparsers.add_parser("prepare")
     prepare_parser.add_argument(
-        "--profile", dest="profiles", action="append", required=True
+        "--profile",
+        dest="profiles",
+        action="append",
+        required=True,
+        nargs='+',
+        type=str,
     )
     prepare_parser.add_argument("--tanker-ref")
     prepare_parser.add_argument(
@@ -397,24 +421,28 @@ def main() -> None:
     deploy_parser.add_argument("--registry", required=True)
 
     args = parser.parse_args()
+    user_home = None
     if args.home_isolation:
-        tankerci.conan.set_home_isolation()
-        tankerci.conan.update_config()
+        user_home = Path.cwd() / ".cache" / "conan" / args.remote
 
     if args.command == "build":
-        build(
-            args.profiles,
-            test=args.test,
-        )
+        profiles = [Profile(p) for p in args.profiles]
+        with tankerci.conan.ConanContextManager([args.remote], conan_home=user_home):
+            build(
+                profiles=profiles,
+                test=args.test,
+            )
     elif args.command == "deploy":
         deploy(args)
     elif args.command == "prepare":
-        prepare(
-            args.tanker_source,
-            args.profiles,
-            update=args.update,
-            tanker_ref=args.tanker_ref,
-        )
+        with tankerci.conan.ConanContextManager([args.remote], conan_home=user_home):
+            profiles = [Profile(p) for p in args.profiles]
+            prepare(
+                args.tanker_source,
+                profiles=profiles,
+                update=args.update,
+                tanker_ref=args.tanker_ref,
+            )
     elif args.command == "reset-branch":
         fallback = os.environ["CI_COMMIT_REF_NAME"]
         ref = tankerci.git.find_ref(
