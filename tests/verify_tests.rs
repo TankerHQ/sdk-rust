@@ -600,3 +600,144 @@ async fn set_verification_method_with_preverified_phone_number() -> Result<(), E
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn check_e2e_passphrase_is_setup() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let id = &app.create_identity(None);
+    let pass = Verification::E2ePassphrase("Methane".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+    let methods = tanker.get_verification_methods().await?;
+    tanker.stop().await?;
+
+    assert!(matches!(*methods, [VerificationMethod::E2ePassphrase]));
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn update_e2e_passphrase() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let id = &app.create_identity(None);
+    let old_pass = Verification::E2ePassphrase("Uremia".into());
+    let new_pass = Verification::E2ePassphrase("DKA".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    tanker
+        .register_identity(&old_pass, &VerificationOptions::new())
+        .await?;
+    tanker
+        .set_verification_method(&new_pass, &VerificationOptions::new())
+        .await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let err = tanker
+        .verify_identity(&old_pass, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), ErrorCode::InvalidVerification);
+
+    tanker
+        .verify_identity(&new_pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn switch_to_e2e_passphrase() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let id = &app.create_identity(None);
+    let old_pass = Verification::Passphrase("Propylene glycol".into());
+    let new_pass = Verification::E2ePassphrase("Isopropyl".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    tanker
+        .register_identity(&old_pass, &VerificationOptions::new())
+        .await?;
+    tanker
+        .set_verification_method(
+            &new_pass,
+            &VerificationOptions::new().allow_e2e_method_switch(),
+        )
+        .await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let err = tanker
+        .verify_identity(&old_pass, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), ErrorCode::PreconditionFailed);
+
+    tanker
+        .verify_identity(&new_pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn switch_from_e2e_passphrase() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let id = &app.create_identity(None);
+    let old_pass = Verification::E2ePassphrase("Lactic acid".into());
+    let new_pass = Verification::Passphrase("Ethylene glycol".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    tanker
+        .register_identity(&old_pass, &VerificationOptions::new())
+        .await?;
+    tanker
+        .set_verification_method(
+            &new_pass,
+            &VerificationOptions::new().allow_e2e_method_switch(),
+        )
+        .await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let err = tanker
+        .verify_identity(&old_pass, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), ErrorCode::PreconditionFailed);
+
+    tanker
+        .verify_identity(&new_pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cannot_switch_to_e2e_passphrase_without_allow_e2e_switch_flag() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let id = &app.create_identity(None);
+    let old_pass = Verification::Passphrase("Salicylate".into());
+    let new_pass = Verification::E2ePassphrase("MUDPILES".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    tanker
+        .register_identity(&old_pass, &VerificationOptions::new())
+        .await?;
+    let err = tanker
+        .set_verification_method(&new_pass, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+    tanker.stop().await?;
+    Ok(())
+}

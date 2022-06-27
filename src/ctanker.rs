@@ -263,8 +263,9 @@ impl CTankerLib {
         options: &VerificationOptions,
     ) -> Result<Option<String>, Error> {
         let c_options = tanker_verification_options {
-            version: 1,
+            version: 2,
             with_session_token: options.with_session_token,
+            allow_e2e_method_switch: options.allow_e2e_method_switch,
         };
         let fut = unsafe {
             CFuture::new(tanker_call!(
@@ -282,8 +283,9 @@ impl CTankerLib {
         options: &VerificationOptions,
     ) -> Result<Option<String>, Error> {
         let c_options = tanker_verification_options {
-            version: 1,
+            version: 2,
             with_session_token: options.with_session_token,
+            allow_e2e_method_switch: options.allow_e2e_method_switch,
         };
         let fut = unsafe {
             CFuture::new(tanker_call!(
@@ -315,8 +317,9 @@ impl CTankerLib {
         options: &VerificationOptions,
     ) -> Result<Option<String>, Error> {
         let c_options = tanker_verification_options {
-            version: 1,
+            version: 2,
             with_session_token: options.with_session_token,
+            allow_e2e_method_switch: options.allow_e2e_method_switch,
         };
         let fut = unsafe {
             CFuture::new(tanker_call!(
