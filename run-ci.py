@@ -191,6 +191,9 @@ class Builder:
             package_libs = package_path / "deplibs"
             package_libs.mkdir(parents=True, exist_ok=True)
             for lib_path in depsConfig.all_lib_paths():
+                if str(lib_path).endswith("libunwind.a"):
+                    ui.info_1("skipping", lib_path)
+                    continue
                 ui.info_1("copying", lib_path, "to", package_libs)
                 shutil.copy(lib_path, package_libs)
 
