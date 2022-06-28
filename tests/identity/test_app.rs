@@ -27,6 +27,7 @@ impl TestApp {
                 )
             }
         }));
+
         TestApp::new().await
     }
 

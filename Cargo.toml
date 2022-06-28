@@ -11,8 +11,10 @@ include = ["native", "src", "tests", "build.rs"]
 futures = "0.3"
 num_enum = "0.5"
 lazy_static = "1.4"
-tokio = { version = "1.12", features = ["sync"] }
+tokio = { version = "1.12", features = ["sync"], default-features = false }
 libloading = "0.7.0"
+reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false, optional = true }
+bytes = { version = "1.1.0", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
@@ -26,3 +28,6 @@ blake2 = "0.10.2"
 ed25519-dalek = "1.0"
 x25519-dalek = "1.1"
 
+[features]
+default = ["http"]
+http = ["tokio/rt", "dep:reqwest", "dep:bytes"]
