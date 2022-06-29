@@ -49,7 +49,7 @@ impl TestApp {
             config.trustchain_url.clone(),
         )
         .unwrap();
-        let app = admin.create_app("rust-test").await.unwrap();
+        let app = admin.create_app("sdk-rust-tests").await.unwrap();
         Self { config, admin, app }
     }
 
