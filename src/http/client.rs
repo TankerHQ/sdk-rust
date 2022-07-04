@@ -12,6 +12,7 @@ pub struct HttpClient {
     client: Client,
     sdk_type: String,
     next_id: AtomicUsize,
+    _runtime: Option<tokio::runtime::Runtime>,
     handle: tokio::runtime::Handle,
     // NOTE: This is a *sync* mutex, don't lock this in async code
     req_handles: Mutex<HashMap<HttpRequestId, JoinHandle<()>>>,
@@ -19,11 +20,24 @@ pub struct HttpClient {
 
 impl HttpClient {
     pub async fn new(sdk_type: Option<&str>) -> Self {
+        let (handle, runtime) = match tokio::runtime::Handle::try_current() {
+            Ok(h) => (h, None),
+            Err(_) => {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .thread_name("tanker-http-tokio")
+                    .build()
+                    .unwrap();
+                (rt.handle().clone(), Some(rt))
+            }
+        };
+
         Self {
             client: Client::new(),
             sdk_type: sdk_type.unwrap_or(RUST_SDK_TYPE).to_string(),
             next_id: 0.into(),
-            handle: tokio::runtime::Handle::current(),
+            _runtime: runtime,
+            handle,
             req_handles: Mutex::new(Default::default()),
         }
     }

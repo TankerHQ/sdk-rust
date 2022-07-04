@@ -29,6 +29,9 @@ ed25519-dalek = "1.0"
 x25519-dalek = "1.1"
 axum = "0.5.11"
 
+# This dep really depends on feature http, but can't express that due to https://github.com/rust-lang/cargo/issues/6915
+async-std = { version = "1.12.0", features = ["attributes"] }
+
 [features]
 default = ["http"]
-http = ["tokio/rt", "dep:reqwest", "dep:bytes"]
+http = ["tokio/rt-multi-thread", "dep:reqwest", "dep:bytes"]

@@ -5,6 +5,7 @@ use axum::handler::Handler;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use identity::TestApp;
+use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -59,6 +60,51 @@ async fn simple_http_request() -> Result<(), Error> {
         .expect("Failed while waiting for the HTTP request");
 
     drop(core);
+    Ok(())
+}
+
+// We test Core with async-std, but our tests still need a tokio runtime (admin API & axum server)
+#[tokio::main(flavor = "multi_thread")]
+async fn run_in_tokio<F, T>(cb: impl FnOnce() -> F) -> T
+where
+    F: Future<Output = T>,
+{
+    cb().await
+}
+
+// Our http client needs a tokio runtime, but if our users are using async-std (some are!),
+// we need to make sure we start our own runtime correctly and don't just panic
+#[async_std::test]
+async fn async_std_http_request() -> Result<(), Error> {
+    let (wait_tx, mut wait_rx) = tokio::sync::mpsc::channel(1);
+    let wait_tx = Arc::new(wait_tx);
+
+    let port = run_in_tokio(|| async {
+        spawn_test_http_server(move || async move {
+            let _ = wait_tx.send(()).await;
+        })
+        .await
+    });
+
+    let app = run_in_tokio(|| async { TestApp::get().await });
+    let opts = Options::new(
+        app.id().to_owned(),
+        ":memory:".to_string(),
+        ":memory:".to_string(),
+    )
+    .with_url(format!("http://127.0.0.1:{port}"))
+    .with_sdk_type("sdk-rust-test".to_string());
+    let core = Core::new(opts).await?;
+    core.start(&app.create_identity(None))
+        .await
+        .expect_err("Shouldn't have started successfully!");
+
+    async_std::future::timeout(Duration::from_secs(2), wait_rx.recv())
+        .await
+        .expect("Failed while waiting for the HTTP request");
+
+    drop(core);
+    run_in_tokio(|| async { drop(app) }); // The drop does an HTTP request to delete the app!
     Ok(())
 }
 
