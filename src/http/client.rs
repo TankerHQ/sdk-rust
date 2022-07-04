@@ -1,9 +1,11 @@
 use crate::ctanker::{CTankerLib, RUST_SDK_TYPE, RUST_SDK_VERSION};
 use crate::http::{HttpRequest, HttpRequestId, HttpResponse};
 use reqwest::{Client, Method, Response};
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use tokio::task::JoinHandle;
 
 #[derive(Debug)]
 pub struct HttpClient {
@@ -11,6 +13,8 @@ pub struct HttpClient {
     sdk_type: String,
     next_id: AtomicUsize,
     handle: tokio::runtime::Handle,
+    // NOTE: This is a *sync* mutex, don't lock this in async code
+    req_handles: Mutex<HashMap<HttpRequestId, JoinHandle<()>>>,
 }
 
 impl HttpClient {
@@ -20,20 +24,26 @@ impl HttpClient {
             sdk_type: sdk_type.unwrap_or(RUST_SDK_TYPE).to_string(),
             next_id: 0.into(),
             handle: tokio::runtime::Handle::current(),
+            req_handles: Mutex::new(Default::default()),
         }
     }
 
     pub fn send_request(self: Arc<Self>, native_req: HttpRequest) -> HttpRequestId {
         let req_id = self.next_id.fetch_add(1, Ordering::AcqRel);
         let handle = self.handle.clone();
-        handle.spawn(self.do_request_async(native_req));
+        let req_handle = handle.spawn(self.clone().do_request_async(req_id, native_req));
+        self.req_handles.lock().unwrap().insert(req_id, req_handle);
         req_id
     }
 
-    async fn do_request_async(self: Arc<Self>, native_req: HttpRequest) {
+    async fn do_request_async(self: Arc<Self>, req_id: HttpRequestId, native_req: HttpRequest) {
         let method = match Method::from_str(native_req.method) {
             Ok(m) => m,
             Err(e) => {
+                self.clone()
+                    .handle
+                    .spawn_blocking(move || self.request_complete(req_id));
+
                 // SAFETY: crequest comes from native (lives until handle_response returns)
                 let resp = HttpResponse::new_network_error(&e.to_string());
                 unsafe { CTankerLib::get().http_handle_response(native_req.crequest, resp) };
@@ -56,6 +66,10 @@ impl HttpClient {
             Err(e) => HttpResponse::new_network_error(&e.to_string()),
         };
 
+        self.clone()
+            .handle
+            .spawn_blocking(move || self.request_complete(req_id));
+
         // SAFETY: All raw pointer come from native, so they are trusted
         unsafe { CTankerLib::get().http_handle_response(native_req.crequest, response) }
     }
@@ -72,7 +86,14 @@ impl HttpClient {
         }
     }
 
-    pub fn cancel_request(&self, req: HttpRequest, req_id: HttpRequestId) {
-        todo!()
+    // NOTE: This locks a *sync* mutex, do not call directly from async code
+    fn request_complete(&self, req_id: HttpRequestId) {
+        self.req_handles.lock().unwrap().remove(&req_id);
+    }
+
+    pub fn cancel_request(&self, _req: HttpRequest, req_id: HttpRequestId) {
+        if let Some(handle) = self.req_handles.lock().unwrap().remove(&req_id) {
+            handle.abort();
+        }
     }
 }

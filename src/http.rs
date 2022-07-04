@@ -32,7 +32,7 @@ impl HttpRequest {
 
         // SAFETY: We trust that native strings are UTF-8 and the pointer/sizes are valid
         let creq = unsafe { &*crequest.0 };
-        let authorization = if (*creq).authorization.is_null() {
+        let authorization = if creq.authorization.is_null() {
             None
         } else {
             Some(CStr::from_ptr(creq.authorization).to_str().unwrap())

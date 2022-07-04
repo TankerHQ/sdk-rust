@@ -145,11 +145,23 @@ unsafe extern "C" fn send_http_request(
 
 #[cfg(feature = "http")]
 unsafe extern "C" fn cancel_http_request(
-    req: *mut tanker_http_request,
+    creq_ptr: *mut tanker_http_request,
     handle: CHttpRequestHandle,
     data: *mut c_void,
 ) {
-    todo!()
+    let client = data as *const HttpClient;
+
+    // client is an Arc on the Rust side, but it's a raw pointer held by native, so Rust can't
+    // fully track its lifetime. Since Arc::drop will decrement the count, we must increment it
+    unsafe { Arc::increment_strong_count(client) };
+
+    // SAFETY: data is set to an Arc<HttpClient> in the tanker_options struct,
+    // and we trust native to not send requests after Core has been dropped
+    let client = unsafe { Arc::from_raw(client) };
+
+    // SAFETY: We trust the request struct from native
+    let req = unsafe { HttpRequest::new(CHttpRequest(creq_ptr)) };
+    client.cancel_request(req, handle as usize);
 }
 
 pub struct CTankerLib {
