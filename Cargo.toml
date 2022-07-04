@@ -27,6 +27,7 @@ variant_count = "1.0"
 blake2 = "0.10.2"
 ed25519-dalek = "1.0"
 x25519-dalek = "1.1"
+axum = "0.5.11"
 
 [features]
 default = ["http"]

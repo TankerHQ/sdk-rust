@@ -56,6 +56,9 @@ pub struct CVerificationPtr(pub(crate) *const tanker_verification);
 // SAFETY: ctanker is thread-safe
 unsafe impl Send for CVerificationPtr {}
 
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for tanker_http_options {}
+
 use crate::http::HttpClient;
 use crate::{
     AttachResult, Device, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options,
@@ -97,9 +100,10 @@ mod bindings {
 }
 
 unsafe extern "C" fn log_handler_thunk(clog: *const tanker_log_record) {
+    let h: LogHandlerCallback = Box::new(|record| eprintln!("LOG: {:?}", record));
     let global_callback = LOG_HANDLER_CALLBACK.lock().unwrap();
     let callback = match global_callback.as_ref() {
-        None => return,
+        None => &h,
         Some(cb) => cb,
     };
 
@@ -160,7 +164,7 @@ unsafe extern "C" fn cancel_http_request(
     let client = unsafe { Arc::from_raw(client) };
 
     // SAFETY: We trust the request struct from native
-    let req = unsafe { HttpRequest::new(CHttpRequest(creq_ptr)) };
+    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
     client.cancel_request(req, handle as usize);
 }
 
