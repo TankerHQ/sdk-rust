@@ -135,21 +135,8 @@ unsafe extern "C" fn send_http_request(
     // and we trust native to not send requests after Core has been dropped
     let client = unsafe { Arc::from_raw(client) };
 
-    // SAFETY: We trust that native strings are UTF-8 and the pointer/sizes are valid
-    let creq = &*creq_ptr;
-    let authorization = if (*creq).authorization.is_null() {
-        None
-    } else {
-        Some(CStr::from_ptr(creq.authorization).to_str().unwrap())
-    };
-    let req = crate::http::HttpRequest {
-        crequest: CHttpRequest(creq_ptr),
-        method: CStr::from_ptr(creq.method).to_str().unwrap(),
-        url: CStr::from_ptr(creq.url).to_str().unwrap(),
-        instance_id: CStr::from_ptr(creq.instance_id).to_str().unwrap(),
-        authorization,
-        body: std::slice::from_raw_parts(creq.body as *const u8, creq.body_size as usize),
-    };
+    // SAFETY: We trust the request struct from native
+    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
     let req_handle = client.send_request(req);
 
     // NOTE: If/when strict provenance is stabilized, this should be a std::ptr::invalid()
