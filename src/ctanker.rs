@@ -101,8 +101,9 @@ mod bindings {
 
 unsafe extern "C" fn log_handler_thunk(clog: *const tanker_log_record) {
     let h: LogHandlerCallback = Box::new(|record| eprintln!("LOG: {:?}", record));
-    let global_callback = LOG_HANDLER_CALLBACK.lock().unwrap();
-    let callback = match global_callback.as_ref() {
+    let global_callback_guard = LOG_HANDLER_CALLBACK.lock().unwrap();
+    let global_callback = global_callback_guard.as_ref();
+    let callback = match global_callback {
         None => &h,
         Some(cb) => cb,
     };
