@@ -89,8 +89,6 @@ impl Display for LogRecordLevel {
 pub struct Device {
     /// The device ID of the device
     pub id: String,
-    /// A device that is revoked cannot be used anymore
-    pub revoked: bool,
 }
 
 impl From<&CDevice> for Device {
@@ -100,10 +98,7 @@ impl From<&CDevice> for Device {
             .to_str()
             .unwrap()
             .to_owned();
-        Self {
-            id,
-            revoked: elem.is_revoked,
-        }
+        Self { id }
     }
 }
 
