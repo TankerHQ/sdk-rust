@@ -32,7 +32,6 @@ pub type CVerification = tanker_verification;
 pub type CEmailVerification = tanker_email_verification;
 pub type CPhoneNumberVerification = tanker_phone_number_verification;
 pub type CVerificationMethod = tanker_verification_method;
-pub type CDevice = tanker_device_list_elem;
 pub type CEncSessPtr = *mut tanker_encryption_session_t;
 pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
 #[cfg(feature = "http")]
@@ -61,8 +60,8 @@ unsafe impl Send for tanker_http_options {}
 
 use crate::http::HttpClient;
 use crate::{
-    AttachResult, Device, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options,
-    Padding, SharingOptions, Status, VerificationMethod, VerificationOptions,
+    AttachResult, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options, Padding,
+    SharingOptions, Status, VerificationMethod, VerificationOptions,
 };
 use lazy_static::lazy_static;
 use std::convert::TryFrom;
@@ -449,28 +448,6 @@ impl CTankerLib {
         methods
     }
 
-    pub async unsafe fn device_id(&self, ctanker: CTankerPtr) -> Result<String, Error> {
-        let fut = unsafe { CFuture::new(tanker_call!(self, tanker_device_id(ctanker.0))) };
-        fut.await
-    }
-
-    pub async unsafe fn device_list(&self, ctanker: CTankerPtr) -> Result<Vec<Device>, Error> {
-        let fut = unsafe {
-            CFuture::<*mut tanker_device_list>::new(tanker_call!(
-                self,
-                tanker_get_device_list(ctanker.0)
-            ))
-        };
-        let list: &mut tanker_device_list = unsafe { &mut *fut.await? };
-        let methods = std::slice::from_raw_parts(list.devices, list.count as usize)
-            .iter()
-            .map(Device::from)
-            .collect();
-
-        unsafe { self.free_device_list(list) };
-        Ok(methods)
-    }
-
     pub async unsafe fn encrypt(
         &self,
         ctanker: CTankerPtr,
@@ -740,10 +717,6 @@ impl CTankerLib {
 
     unsafe fn free_verification_method_list(&self, list: &mut tanker_verification_method_list) {
         unsafe { tanker_call!(self, tanker_free_verification_method_list(list)) }
-    }
-
-    unsafe fn free_device_list(&self, list: &mut tanker_device_list) {
-        unsafe { tanker_call!(self, tanker_free_device_list(list)) }
     }
 }
 

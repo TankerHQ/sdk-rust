@@ -60,21 +60,6 @@ async fn start_stop_session() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn has_correct_device_list() -> Result<(), Error> {
-    let app = TestApp::get().await;
-    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
-
-    #[allow(deprecated)]
-    let list = tanker.device_list().await?;
-    assert_eq!(list.len(), 1);
-    #[allow(deprecated)]
-    let device_id = tanker.device_id().unwrap();
-    assert_eq!(list[0].id, device_id);
-
-    tanker.stop().await
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_and_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let tanker = app.start_anonymous(&app.create_identity(None)).await?;
