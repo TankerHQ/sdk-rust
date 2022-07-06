@@ -279,7 +279,7 @@ impl CTankerLib {
             body: response
                 .body
                 .as_ref()
-                .map(|s| s.as_ptr() as *const i8)
+                .map(|s| s.as_ptr() as *const c_char)
                 .unwrap_or(std::ptr::null()),
             body_size: response.body.as_ref().map(|v| v.len()).unwrap_or(0) as i64,
             status_code: response.status_code as i32,
