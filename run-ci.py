@@ -266,8 +266,17 @@ class Builder:
         self._prepare_profile()
 
     def _cargo(self, subcommand: str, *extra_args) -> None:
+        env = os.environ.copy()
+        if self._is_android_target:
+            android_bin_path = get_android_bin_path()
+            env["CC"] = str(android_bin_path / "clang")
+            env["AR"] = str(android_bin_path / "llvm-ar")
+            ui.info(f'Using {env["CC"]}')
+            ui.info(f'Using {env["AR"]}')
+
         tankerci.run(
-            "cargo", subcommand, "--target", self.target_triplet, *extra_args, cwd=self.src_path
+            "cargo", subcommand, "--target", self.target_triplet, *extra_args, cwd=self.src_path,
+            env=env
         )
         if self._is_windows_target:
             tankerci.run(
