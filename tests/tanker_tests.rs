@@ -89,6 +89,118 @@ async fn encrypt_and_decrypt() -> Result<(), Error> {
     Ok(())
 }
 
+const SIMPLE_ENCRYPTION_OVERHEAD: usize = 17;
+const SIMPLE_PADDED_ENCRYPTION_OVERHEAD: usize = SIMPLE_ENCRYPTION_OVERHEAD + 1;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn padding_opt_auto_by_default() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let plaintext = b"my clear data is clear!";
+    let length_with_padme = 24;
+    let encrypted = tanker.encrypt(plaintext, &Default::default()).await?;
+
+    assert_eq!(
+        encrypted.len() - SIMPLE_PADDED_ENCRYPTION_OVERHEAD,
+        length_with_padme
+    );
+
+    let decrypted = tanker.decrypt(&encrypted).await?;
+    tanker.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn padding_opt_auto() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let plaintext = b"my clear data is clear!";
+    let length_with_padme = 24;
+    let options = EncryptionOptions::new().padding_step(Padding::Auto);
+    let encrypted = tanker.encrypt(plaintext, &options).await?;
+
+    assert_eq!(
+        encrypted.len() - SIMPLE_PADDED_ENCRYPTION_OVERHEAD,
+        length_with_padme
+    );
+
+    let decrypted = tanker.decrypt(&encrypted).await?;
+    tanker.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn padding_opt_disable() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let plaintext = b"Chocolate";
+    let options = EncryptionOptions::new().padding_step(Padding::Off);
+    let encrypted = tanker.encrypt(plaintext, &options).await?;
+
+    assert_eq!(
+        encrypted.len() - SIMPLE_ENCRYPTION_OVERHEAD,
+        plaintext.len()
+    );
+
+    let decrypted = tanker.decrypt(&encrypted).await?;
+    tanker.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn padding_opt_enable() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let tanker = app.start_anonymous(&app.create_identity(None)).await?;
+
+    let plaintext = b"Chocolate";
+    let options = EncryptionOptions::new().padding_step(Padding::with_step(13)?);
+    let encrypted = tanker.encrypt(plaintext, &options).await?;
+
+    assert_eq!(
+        (encrypted.len() - SIMPLE_PADDED_ENCRYPTION_OVERHEAD) % 13_usize,
+        0
+    );
+
+    let decrypted = tanker.decrypt(&encrypted).await?;
+    tanker.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn invalid_padding_step_zero() -> Result<(), Error> {
+    let err = Padding::with_step(0).unwrap_err();
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+    assert_eq!(
+        err.message(),
+        "Invalid padding step, the value must be >= 2."
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn invalid_padding_step_one() -> Result<(), Error> {
+    let err = Padding::with_step(1).unwrap_err();
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+    assert_eq!(
+        err.message(),
+        "Invalid padding step, the value must be >= 2."
+    );
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn share_then_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;

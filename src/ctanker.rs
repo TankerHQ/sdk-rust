@@ -50,7 +50,7 @@ unsafe impl Send for CVerificationPtr {}
 
 use crate::{
     AttachResult, Device, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options,
-    SharingOptions, Status, VerificationMethod, VerificationOptions,
+    Padding, SharingOptions, Status, VerificationMethod, VerificationOptions,
 };
 use lazy_static::lazy_static;
 use std::convert::TryFrom;
@@ -378,10 +378,14 @@ impl CTankerLib {
         data: &[u8],
         options: &EncryptionOptions,
     ) -> Result<Vec<u8>, Error> {
-        let encrypted_size = tanker_call!(self, tanker_encrypted_size(data.len() as u64)) as usize;
-        let mut encrypted = Vec::with_capacity(encrypted_size);
-
         let options_wrapper = options.to_c_encryption_options();
+
+        let encrypted_size = tanker_call!(
+            self,
+            tanker_encrypted_size(data.len() as u64, options_wrapper.c_options.padding_step)
+        ) as usize;
+
+        let mut encrypted = Vec::with_capacity(encrypted_size);
 
         let fut = unsafe {
             CFuture::new(tanker_call!(
@@ -580,7 +584,7 @@ impl CTankerLib {
     ) -> Result<Vec<u8>, Error> {
         let encrypted_size = tanker_call!(
             self,
-            tanker_encryption_session_encrypted_size(data.len() as u64)
+            tanker_encryption_session_encrypted_size(csess, data.len() as u64)
         ) as usize;
         let mut encrypted = Vec::with_capacity(encrypted_size);
 
@@ -667,13 +671,20 @@ impl EncryptionOptions {
             .map(|u| u.as_ptr())
             .collect::<Vec<_>>();
 
+        let c_padding = match self.padding_step {
+            Padding::Auto => 0,
+            Padding::Off => 1,
+            Padding::Step(padding_step) => padding_step.as_value(),
+        };
+
         let c_options = tanker_encrypt_options {
-            version: 3,
+            version: 4,
             share_with_users: share_with_users.as_ptr(),
             nb_users: share_with_users.len() as u32,
             share_with_groups: share_with_groups.as_ptr(),
             nb_groups: share_with_groups.len() as u32,
             share_with_self: self.share_with_self,
+            padding_step: c_padding,
         };
 
         EncryptionOptionsWrapper::<'a> {

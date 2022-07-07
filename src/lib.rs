@@ -16,7 +16,7 @@ mod types;
 pub use types::*;
 
 mod sharing_options;
-pub use sharing_options::{EncryptionOptions, SharingOptions};
+pub use sharing_options::{EncryptionOptions, Padding, SharingOptions};
 
 mod verification_options;
 pub use verification_options::VerificationOptions;
