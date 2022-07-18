@@ -1,13 +1,16 @@
 use crate::ctanker::CTankerLib;
+use crate::http::HttpClient;
 use crate::*;
 use futures::executor::block_on;
 use futures::AsyncRead;
 use std::ffi::CString;
+use std::sync::Arc;
 
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct Core {
     ctanker: ctanker::CTankerPtr,
+    _http_client: Arc<HttpClient>,
 }
 
 // SAFETY: ctanker is thread-safe
@@ -28,9 +31,16 @@ impl Core {
     /// ```
     pub async fn new(options: Options) -> Result<Self, Error> {
         CTankerLib::init();
-        let ctanker = CTankerLib::get().create(options).await?;
+        let sdk_type = options.sdk_type.as_ref().map(|s| s.to_str().unwrap());
+        let http_client = Arc::new(HttpClient::new(sdk_type).await);
+        let ctanker = CTankerLib::get()
+            .create(options, Some(http_client.clone()))
+            .await?;
 
-        Ok(Self { ctanker })
+        Ok(Self {
+            ctanker,
+            _http_client: http_client,
+        })
     }
 
     pub fn set_log_handler(callback: Box<dyn Fn(LogRecord) + Send>) {

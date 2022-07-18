@@ -35,6 +35,14 @@ pub type CVerificationMethod = tanker_verification_method;
 pub type CDevice = tanker_device_list_elem;
 pub type CEncSessPtr = *mut tanker_encryption_session_t;
 pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
+#[cfg(feature = "http")]
+pub type CHttpRequestHandle = *mut tanker_http_request_handle_t;
+
+#[derive(Debug)]
+pub struct CHttpRequest(pub(crate) *mut tanker_http_request_t);
+
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for CHttpRequest {}
 
 #[derive(Copy, Clone, Debug)]
 pub struct CTankerPtr(pub(crate) *mut tanker_t);
@@ -48,6 +56,10 @@ pub struct CVerificationPtr(pub(crate) *const tanker_verification);
 // SAFETY: ctanker is thread-safe
 unsafe impl Send for CVerificationPtr {}
 
+// SAFETY: ctanker is thread-safe
+unsafe impl Send for tanker_http_options {}
+
+use crate::http::HttpClient;
 use crate::{
     AttachResult, Device, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options,
     Padding, SharingOptions, Status, VerificationMethod, VerificationOptions,
@@ -57,10 +69,10 @@ use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::os::raw::c_char;
 use std::ptr::NonNull;
-use std::sync::{Mutex, Once};
+use std::sync::{Arc, Mutex, Once};
 
-static RUST_SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
-static RUST_SDK_TYPE: &str = "client-rust";
+pub(crate) static RUST_SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) static RUST_SDK_TYPE: &str = "client-rust";
 
 static TANKER_INITIALIZED: Once = Once::new();
 lazy_static! {
@@ -88,9 +100,11 @@ mod bindings {
 }
 
 unsafe extern "C" fn log_handler_thunk(clog: *const tanker_log_record) {
-    let global_callback = LOG_HANDLER_CALLBACK.lock().unwrap();
-    let callback = match global_callback.as_ref() {
-        None => return,
+    let h: LogHandlerCallback = Box::new(|record| eprintln!("LOG: {:?}", record));
+    let global_callback_guard = LOG_HANDLER_CALLBACK.lock().unwrap();
+    let global_callback = global_callback_guard.as_ref();
+    let callback = match global_callback {
+        None => &h,
         Some(cb) => cb,
     };
 
@@ -109,6 +123,50 @@ unsafe extern "C" fn log_handler_thunk(clog: *const tanker_log_record) {
         }
     };
     callback(record);
+}
+
+#[cfg(feature = "http")]
+unsafe extern "C" fn send_http_request(
+    creq_ptr: *mut tanker_http_request,
+    data: *mut c_void,
+) -> CHttpRequestHandle {
+    let client = data as *const HttpClient;
+
+    // client is an Arc on the Rust side, but it's a raw pointer held by native, so Rust can't
+    // fully track its lifetime. Since Arc::drop will decrement the count, we must increment it
+    unsafe { Arc::increment_strong_count(client) };
+
+    // SAFETY: data is set to an Arc<HttpClient> in the tanker_options struct,
+    // and we trust native to not send requests after Core has been dropped
+    let client = unsafe { Arc::from_raw(client) };
+
+    // SAFETY: We trust the request struct from native
+    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
+    let req_handle = client.send_request(req);
+
+    // NOTE: If/when strict provenance is stabilized, this should be a std::ptr::invalid()
+    req_handle as CHttpRequestHandle
+}
+
+#[cfg(feature = "http")]
+unsafe extern "C" fn cancel_http_request(
+    creq_ptr: *mut tanker_http_request,
+    handle: CHttpRequestHandle,
+    data: *mut c_void,
+) {
+    let client = data as *const HttpClient;
+
+    // client is an Arc on the Rust side, but it's a raw pointer held by native, so Rust can't
+    // fully track its lifetime. Since Arc::drop will decrement the count, we must increment it
+    unsafe { Arc::increment_strong_count(client) };
+
+    // SAFETY: data is set to an Arc<HttpClient> in the tanker_options struct,
+    // and we trust native to not send requests after Core has been dropped
+    let client = unsafe { Arc::from_raw(client) };
+
+    // SAFETY: We trust the request struct from native
+    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
+    client.cancel_request(req, handle as usize);
 }
 
 pub struct CTankerLib {
@@ -143,11 +201,29 @@ impl CTankerLib {
         *global_callback = Some(callback);
     }
 
-    pub async fn create(&self, options: Options) -> Result<CTankerPtr, Error> {
+    pub async fn create(
+        &self,
+        options: Options,
+        http_client: Option<Arc<HttpClient>>,
+    ) -> Result<CTankerPtr, Error> {
         let sdk_type = options
             .sdk_type
             .unwrap_or_else(|| CString::new(RUST_SDK_TYPE).unwrap());
         let sdk_version = CString::new(RUST_SDK_VERSION).unwrap();
+
+        let http_options = match http_client {
+            #[cfg(feature = "http")]
+            Some(client) => tanker_http_options {
+                send_request: Some(send_http_request),
+                cancel_request: Some(cancel_http_request),
+                data: Arc::as_ptr(&client) as *mut c_void,
+            },
+            _ => tanker_http_options {
+                send_request: None,
+                cancel_request: None,
+                data: std::ptr::null_mut(),
+            },
+        };
 
         let fut = {
             let coptions = tanker_options {
@@ -162,11 +238,7 @@ impl CTankerLib {
                 cache_path: options.cache_path.as_ptr(),
                 sdk_type: sdk_type.as_ptr(),
                 sdk_version: sdk_version.as_ptr(),
-                http_options: tanker_http_options {
-                    send_request: None,
-                    cancel_request: None,
-                    data: std::ptr::null_mut(),
-                },
+                http_options,
                 datastore_options: tanker_datastore_options {
                     open: None,
                     close: None,
@@ -185,6 +257,34 @@ impl CTankerLib {
     pub async unsafe fn destroy(&self, ctanker: CTankerPtr) {
         let fut = unsafe { CFuture::new(tanker_call!(self, tanker_destroy(ctanker.0))) };
         let _: Result<(), _> = fut.await; // Ignore errors, nothing useful we can do if destroy() fails
+    }
+
+    #[cfg(feature = "http")]
+    pub unsafe fn http_handle_response(
+        &self,
+        request: CHttpRequest,
+        response: crate::http::HttpResponse,
+    ) {
+        let mut cresponse = tanker_http_response_t {
+            error_msg: response
+                .error_msg
+                .as_ref()
+                .map(|s| s.as_ptr())
+                .unwrap_or(std::ptr::null()),
+            content_type: response
+                .content_type
+                .as_ref()
+                .map(|s| s.as_ptr())
+                .unwrap_or(std::ptr::null()),
+            body: response
+                .body
+                .as_ref()
+                .map(|s| s.as_ptr() as *const c_char)
+                .unwrap_or(std::ptr::null()),
+            body_size: response.body.as_ref().map(|v| v.len()).unwrap_or(0) as i64,
+            status_code: response.status_code as i32,
+        };
+        unsafe { tanker_call!(self, tanker_http_handle_response(request.0, &mut cresponse)) };
     }
 
     pub unsafe fn status(&self, ctanker: CTankerPtr) -> Status {

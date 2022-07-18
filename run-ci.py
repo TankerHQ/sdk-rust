@@ -265,9 +265,18 @@ class Builder:
         )
         self._prepare_profile()
 
-    def _cargo(self, subcommand: str) -> None:
+    def _cargo(self, subcommand: str, *extra_args) -> None:
+        env = os.environ.copy()
+        if self._is_android_target:
+            android_bin_path = get_android_bin_path()
+            env["CC"] = str(android_bin_path / "clang")
+            env["AR"] = str(android_bin_path / "llvm-ar")
+            ui.info(f'Using {env["CC"]}')
+            ui.info(f'Using {env["AR"]}')
+
         tankerci.run(
-            "cargo", subcommand, "--target", self.target_triplet, cwd=self.src_path
+            "cargo", subcommand, "--target", self.target_triplet, *extra_args, cwd=self.src_path,
+            env=env
         )
         if self._is_windows_target:
             tankerci.run(
@@ -275,6 +284,7 @@ class Builder:
                 subcommand,
                 "--target",
                 "x86_64-pc-windows-gnu",
+                *extra_args,
                 cwd=self.src_path,
             )
 
@@ -319,6 +329,7 @@ class Builder:
                 Path("target") / "debug/deps",
             )
         self._cargo("test")
+        self._cargo("test", "--no-default-features") # Also test without HTTP reverse bindings on desktops
 
 
 def prepare(
