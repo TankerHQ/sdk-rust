@@ -71,6 +71,9 @@ impl HttpClient {
             .header("X-Tanker-SdkVersion", RUST_SDK_VERSION)
             .header("X-Tanker-Instanceid", native_req.instance_id)
             .body(native_req.body);
+        if native_req.body.is_empty() {
+            req_builder = req_builder.header("Content-Length", 0);
+        }
         if let Some(auth) = native_req.authorization {
             req_builder = req_builder.header("Authorization", auth);
         }
