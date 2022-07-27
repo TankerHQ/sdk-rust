@@ -202,6 +202,46 @@ async fn invalid_padding_step_one() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn restart_device_session_and_encrypt() -> Result<(), Error> {
+    let app = TestApp::get().await;
+
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("rust-test.")
+        .tempdir()
+        .expect("Failed to create temp dir for tanker storage");
+    let tmp_dir_str = tmp_dir.path().to_str().unwrap().to_owned();
+    let options = Options::new(app.id().to_owned(), tmp_dir_str.clone(), tmp_dir_str)
+        .with_url(app.url().to_owned())
+        .with_sdk_type("sdk-rust-test".to_string());
+
+    let identity = app.create_identity(None);
+    let tanker = Core::new(options.clone()).await?;
+    let status = tanker.start(&identity).await?;
+    assert_eq!(status, Status::IdentityRegistrationNeeded);
+
+    let verif = Verification::E2ePassphrase("12345".into());
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    tanker.stop().await?;
+    drop(tanker);
+
+    let tanker2 = Core::new(options).await?;
+    tanker2.start(&identity).await?;
+    assert_eq!(tanker2.status(), Status::Ready);
+
+    let plaintext = b"Nepenthe";
+    let encrypted = tanker2.encrypt(plaintext, &Default::default()).await?;
+    let decrypted = tanker2.decrypt(&encrypted).await?;
+    tanker2.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn share_then_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
