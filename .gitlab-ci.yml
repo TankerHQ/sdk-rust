@@ -95,7 +95,7 @@ stages:
   extends:
     - .tags/linux
   variables:
-    TANKER_PROFILES: --profile android-armv8 tanker-static no-http-backend --profile android-x86_64 tanker-static no-http-backend --profile android-x86 tanker-static no-http-backend --profile android-armv7 tanker-static no-http-backend
+    TANKER_PROFILES: --profile android-armv8 tanker-static http-backend --profile android-x86_64 tanker-static http-backend --profile android-x86 tanker-static http-backend --profile android-armv7 tanker-static http-backend
 
 .profiles/macos/x86_64:
   extends:
@@ -113,13 +113,13 @@ stages:
   extends:
     - .tags/macos/x86_64
   variables:
-    TANKER_PROFILES: --profile ios-armv8 no-http-backend --profile ios_simulator-x86_64 no-http-backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-x86_64 http-backend
 
 .profiles/ios/arm:
   extends:
     - .tags/macos/arm
   variables:
-    TANKER_PROFILES: --profile ios-armv8 no-http-backend --profile ios_simulator-armv8 no-http-backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-armv8 http-backend
 
 ######################
 # prepare stage #
@@ -209,7 +209,7 @@ check/native-from-sources/android:
     - .profiles/android
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile android-armv8 tanker-static no-http-backend --profile android-x86_64 tanker-static no-http-backend --profile android-x86 tanker-static no-http-backend --profile android-armv7 tanker-static no-http-backend
+    TANKER_PROFILES: --profile android-armv8 tanker-static http-backend --profile android-x86_64 tanker-static http-backend --profile android-x86 tanker-static http-backend --profile android-armv7 tanker-static http-backend
   tags: !reference [.tags/compilation-linux, tags]
 
 check/native-from-sources/macos/x86_64:
@@ -231,14 +231,14 @@ check/native-from-sources/ios/x86_64:
     - .profiles/ios/x86_64
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile ios-armv8 no-http-backend --profile ios_simulator-x86_64 no-http-backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-x86_64 http-backend
 
 check/native-from-sources/ios/arm:
   extends:
     - .profiles/ios/arm
     - .check/native-from-sources
   variables:
-    TANKER_PROFILES: --profile ios-armv8 no-http-backend --profile ios_simulator-armv8 no-http-backend
+    TANKER_PROFILES: --profile ios-armv8 http-backend --profile ios_simulator-armv8 http-backend
 
 .rules/check/deployed-native:
   rules:
