@@ -1,20 +1,19 @@
-from typing import List, Optional
-import os
 import argparse
 import json
-from pathlib import Path
+import os
 import shutil
 import sys
+from pathlib import Path
+from typing import List, Optional
 
 import cli_ui as ui  # noqa
 import tankerci
-from tankerci.conan import Profile, TankerSource
 import tankerci.conan
+import tankerci.cpp
 import tankerci.git
 import tankerci.gitlab
-import tankerci.cpp
 from tankerci.build_info import DepsConfig
-
+from tankerci.conan import Profile, TankerSource
 
 TARGET_LIST = [
     "armv7-linux-androideabi",
@@ -131,11 +130,17 @@ class Builder:
         self.src_path = src_path
         self.host_profile = host_profile
         self.build_profile = build_profile
-        self.platform = tankerci.conan.get_profile_key("settings.os", str(host_profile[0]))
+        self.platform = tankerci.conan.get_profile_key(
+            "settings.os", str(host_profile[0])
+        )
         self.sdk = None
         if self.platform == "iOS":
-            self.sdk = tankerci.conan.get_profile_key("settings.os.sdk", str(host_profile[0]))
-        self.arch = tankerci.conan.get_profile_key("settings.arch", str(host_profile[0]))
+            self.sdk = tankerci.conan.get_profile_key(
+                "settings.os.sdk", str(host_profile[0])
+            )
+        self.arch = tankerci.conan.get_profile_key(
+            "settings.arch", str(host_profile[0])
+        )
         self.target_triplet = profile_to_rust_target(self.platform, self.arch, self.sdk)
 
     @property
@@ -216,7 +221,9 @@ class Builder:
     def _prepare_profile(self) -> None:
         conan_out = self.src_path / "conan" / "out" / str(self.host_profile)
         package_path = conan_out / "package"
-        depsConfig = DepsConfig(self.src_path / "conan" / "out" / str(self.host_profile))
+        depsConfig = DepsConfig(
+            self.src_path / "conan" / "out" / str(self.host_profile)
+        )
 
         self._copy_includes(package_path, depsConfig)
 
@@ -308,7 +315,9 @@ class Builder:
         self.build()
 
         if not self._is_host_target:
-            ui.info(str(self.host_profile), "is a cross-compiled target, skipping tests")
+            ui.info(
+                str(self.host_profile), "is a cross-compiled target, skipping tests"
+            )
             return
 
         tankerci.run("cargo", "fmt", "--", "--check", cwd=self.src_path)
@@ -338,7 +347,7 @@ def prepare(
     profiles: List[Profile],
     update: bool = False,
     tanker_ref: Optional[str] = None,
-):
+) -> None:
     build_profile = tankerci.conan.get_build_profile()
     for host_profile in profiles:
         builder = Builder(
@@ -398,7 +407,7 @@ def main() -> None:
         dest="profiles",
         action="append",
         required=True,
-        nargs='+',
+        nargs="+",
         type=str,
     )
     build_parser.add_argument("--test", action="store_true")
@@ -409,7 +418,7 @@ def main() -> None:
         dest="profiles",
         action="append",
         required=True,
-        nargs='+',
+        nargs="+",
         type=str,
     )
     prepare_parser.add_argument("--tanker-ref")
