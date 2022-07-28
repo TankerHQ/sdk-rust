@@ -12,7 +12,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     bindings_folder.push(&target_triplet);
 
     let target_family = std::env::var("CARGO_CFG_TARGET_FAMILY")?;
-    let target_os = std::env::var("CARGO_CFG_TARGET_OS")?;
 
     let lib_filename = "libctanker.a";
     if !bindings_folder.exists() {
@@ -70,14 +69,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    if target_os == "macos" {
+    if target_triplet.contains("-apple") {
         // Required to compile sdk-rust with libcurl
-        println!("cargo:rustc-link-arg=-framework");
-        println!("cargo:rustc-link-arg=Foundation");
-        println!("cargo:rustc-link-arg=-framework");
-        println!("cargo:rustc-link-arg=SystemConfiguration");
-        println!("cargo:rustc-link-arg=-framework");
-        println!("cargo:rustc-link-arg=Security");
+        println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=Security");
+        println!("cargo:rustc-link-lib=framework=SystemConfiguration");
     }
 
     if target_family == "windows" {
