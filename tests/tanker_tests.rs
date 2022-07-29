@@ -265,6 +265,29 @@ async fn share_then_decrypt() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn share_duplicate_user_id() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+    let bob_id = app.create_identity(None);
+    let bob_public_id = app.get_public_identity(&bob_id);
+    let bob = app.start_anonymous(&bob_id).await?;
+
+    let plaintext = b"Turin";
+    let encrypted = alice.encrypt(plaintext, &Default::default()).await?;
+    let resource_id = alice.get_resource_id(&encrypted)?;
+
+    let options = SharingOptions::new().share_with_users(&[bob_public_id.clone(), bob_public_id]);
+    alice.share(&[resource_id], &options).await?;
+
+    let decrypted = bob.decrypt(&encrypted).await?;
+    alice.stop().await?;
+    bob.stop().await?;
+
+    assert_eq!(decrypted, plaintext);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn encrypt_and_share_then_decrypt() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
@@ -318,6 +341,42 @@ async fn share_with_provisional_user() -> Result<(), Error> {
 
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
     let options = EncryptionOptions::new().share_with_users(&[bob_public_id]);
+    let encrypted = alice.encrypt(message, &options).await?;
+    alice.stop().await?;
+
+    let bob = app.start_anonymous(&app.create_identity(None)).await?;
+    let attach_result = bob.attach_provisional_identity(&bob_provisional).await?;
+    assert_eq!(attach_result.status, Status::IdentityVerificationNeeded);
+    assert_eq!(
+        attach_result.verification_method,
+        Some(VerificationMethod::Email(bob_email.clone()))
+    );
+
+    let verif = Verification::Email {
+        email: bob_email.clone(),
+        verification_code: app.get_email_verification_code(&bob_email).await?,
+    };
+    bob.verify_provisional_identity(&verif).await?;
+
+    let decrypted = bob.decrypt(&encrypted).await?;
+    assert_eq!(&decrypted, message);
+
+    bob.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn share_with_duplicate_provisional_user() -> Result<(), Error> {
+    let message = b"Variable 'message' is never used";
+    let app = TestApp::get().await;
+
+    let bob_email = "bob@tanker.io".to_owned();
+    let bob_provisional = app.create_provisional_identity(&bob_email);
+    let bob_public_id = app.get_public_identity(&bob_provisional);
+
+    let alice = app.start_anonymous(&app.create_identity(None)).await?;
+    let options =
+        EncryptionOptions::new().share_with_users(&[bob_public_id.clone(), bob_public_id]);
     let encrypted = alice.encrypt(message, &options).await?;
     alice.stop().await?;
 
