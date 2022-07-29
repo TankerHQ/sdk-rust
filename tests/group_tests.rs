@@ -84,6 +84,24 @@ async fn share_with_external_group() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn encrypt_share_with_duplicate_group_id() -> Result<(), Error> {
+    let app = TestApp::get().await;
+    let alice_id = app.create_identity(None);
+    let alice_pub_id = app.get_public_identity(&alice_id);
+    let alice = app.start_anonymous(&alice_id).await?;
+
+    let group_id = alice.create_group(&[&alice_pub_id]).await?;
+
+    let msg: &[u8] = b"Coverage is the mother of safety";
+    let options = EncryptionOptions::new().share_with_groups(&[group_id.clone(), group_id]);
+    let encrypted = alice.encrypt(msg, &options).await?;
+    assert_eq!(alice.decrypt(&encrypted).await?, msg);
+
+    alice.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn add_member_to_group() -> Result<(), Error> {
     let app = TestApp::get().await;
     let alice_id = app.create_identity(None);
