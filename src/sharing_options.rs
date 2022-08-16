@@ -6,7 +6,7 @@ use std::ffi::CString;
 ///
 /// Providing `with_step(value)` will enforce the padding of the clear data up to a multiple of `value` before its encryption.
 /// Note that `value` must be >= 2. To disable padding, use `Off`.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Padding {
     Auto,
     Off,
@@ -31,7 +31,7 @@ impl Default for Padding {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PaddingStep {
     value: u32,
 }
