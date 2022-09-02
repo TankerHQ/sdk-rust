@@ -1,7 +1,6 @@
-use crate::ctanker::CDevice;
 use crate::VerificationMethod;
 use num_enum::{TryFromPrimitive, UnsafeFromPrimitive};
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::fmt::{Display, Formatter};
 
 /// Options used by the [Core](struct.Core.html) struct
@@ -79,30 +78,6 @@ impl Display for LogRecordLevel {
             LogRecordLevel::Info => f.write_str("Info"),
             LogRecordLevel::Warning => f.write_str("Warning"),
             LogRecordLevel::Error => f.write_str("Error"),
-        }
-    }
-}
-
-/// Describes a Tanker device
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct Device {
-    /// The device ID of the device
-    pub id: String,
-    /// A device that is revoked cannot be used anymore
-    pub revoked: bool,
-}
-
-impl From<&CDevice> for Device {
-    fn from(elem: &CDevice) -> Self {
-        // SAFETY: If CDevice is valid, the device ID is valid UTF-8
-        let id = unsafe { CStr::from_ptr(elem.device_id) }
-            .to_str()
-            .unwrap()
-            .to_owned();
-        Self {
-            id,
-            revoked: elem.is_revoked,
         }
     }
 }

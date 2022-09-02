@@ -30,8 +30,7 @@ pub enum ErrorCode {
     ExpiredVerification = 10,
     /// There was an error on a stream (see `source()` for more detail)
     IoError = 11,
-    /// The current device is revoked and cannot be used anymore
-    DeviceRevoked = 12,
+    // DeviceRevoked = 12,
     /// There was a conflict with a concurrent operation from another device/user. Please try again
     Conflict = 13,
     /// A new version of the SDK is required to perform the requested action
@@ -99,9 +98,9 @@ impl From<Error> for futures::io::Error {
         let kind = match e.code() {
             ErrorCode::OperationCanceled => ErrorKind::Interrupted,
             ErrorCode::GroupTooBig | ErrorCode::InvalidArgument => ErrorKind::InvalidInput,
-            ErrorCode::ExpiredVerification
-            | ErrorCode::DeviceRevoked
-            | ErrorCode::InvalidVerification => ErrorKind::PermissionDenied,
+            ErrorCode::ExpiredVerification | ErrorCode::InvalidVerification => {
+                ErrorKind::PermissionDenied
+            }
             ErrorCode::NetworkError => ErrorKind::ConnectionReset,
             ErrorCode::IoError => ErrorKind::BrokenPipe,
             ErrorCode::NoError
