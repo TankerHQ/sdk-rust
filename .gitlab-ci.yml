@@ -1,10 +1,10 @@
 include:
   project: TankerHQ/gitlab-ci-files
   file: /common.yml
-  ref: 2022-08-19-248
+  ref: 2022-09-05-258
 
 variables:
-  SDK_NATIVE_LATEST_CONAN_REFERENCE: tanker/latest-stable@
+  SDK_NATIVE_CONAN_REFERENCE: tanker/latest-stable@
 
 ############
 # Workflow #
@@ -140,7 +140,7 @@ stages:
     - .rules/prepare
     - .release-artifacts
   script:
-    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_LATEST_CONAN_REFERENCE $TANKER_PROFILES
+    - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE prepare --use-tanker=deployed --tanker-ref=$SDK_NATIVE_CONAN_REFERENCE $TANKER_PROFILES
 
 prepare/deployed/linux:
   extends:
