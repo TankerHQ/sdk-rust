@@ -83,7 +83,11 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", &self.msg)
+        if let Some(source) = &self.source {
+            write!(f, "{}: {}", &self.msg, source)
+        } else {
+            write!(f, "{}", &self.msg)
+        }
     }
 }
 
