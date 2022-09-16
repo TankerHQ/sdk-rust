@@ -16,6 +16,10 @@ libloading = "0.7.0"
 reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false, optional = true }
 bytes = { version = "1.1.0", optional = true }
 
+# Try to use system certificate store by default on desktops
+[target.'cfg(any(windows, target_os = "linux", target_os = "macos"))'.dependencies]
+reqwest = { version = "0.11", features = ["rustls-tls", "rustls-tls-native-roots"], default-features = false, optional = true }
+
 [dev-dependencies]
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
@@ -36,3 +40,7 @@ async-std = { version = "1.12.0", features = ["attributes"] }
 [features]
 default = ["http"]
 http = ["tokio/rt-multi-thread", "dep:reqwest", "dep:bytes"]
+# Use system certificate store in addition to WebPKI roots.
+# Rustls only supports the sytem store on Windows/Linux/Mac, but this feature also enables the SSL_CERT_FILE env var.
+# If you use self-signed certificates, enable this feature and add your cert to SSL_CERT_FILE or to the system store.
+http-system-certs = ["http", "reqwest?/rustls-tls-native-roots"]
