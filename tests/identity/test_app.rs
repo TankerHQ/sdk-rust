@@ -1,14 +1,14 @@
 #![allow(dead_code)] // This module is compiled per-test. Not all tests will use all functions!
 
 mod config;
-use config::{Config, OidcConfig};
 
 use super::Admin;
 use super::App;
 use crate::identity::{create_identity, create_provisional_identity, get_public_identity};
-use futures::executor::block_on;
+use config::{Config, OidcConfig};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
+use std::future::Future;
 use tankersdk::{Core, Error, LogRecordLevel, Options, Status, Verification, VerificationOptions};
 
 pub struct TestApp {
@@ -137,12 +137,30 @@ impl TestApp {
     }
 }
 
+/// Due to the lack of proper async drop, just spawn a whole runtime in a thread
+/// Otherwise blocking the current thread could block the _same_ runtime that we're trying
+/// to execute our drop future on, which sadly tends to make it wait for a pretty long ever.
+fn async_drop_in_thread<F: Future + Send>(future: F) -> F::Output
+where
+    F::Output: Send,
+{
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(future)
+        })
+        .join()
+        .expect("async drop thread join failed")
+    })
+}
+
 impl Drop for TestApp {
     fn drop(&mut self) {
-        // NOTE: Log and ignore errors, there's nothing we can do
-        let result = block_on(self.admin.delete_app(&self.app.id));
-        if let Err(err) = result {
-            eprintln!("Error deleting the test app: {}", err);
+        if let Err(err) = async_drop_in_thread(self.admin.delete_app(&self.app.id)) {
+            panic!("Error deleting the test app: {}", err);
         }
     }
 }
