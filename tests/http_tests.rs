@@ -136,6 +136,7 @@ async fn request_cancellation() -> Result<(), Error> {
     .await;
 
     let app = TestApp::get().await;
+    let ident = app.create_identity(None);
     let opts = Options::new(
         app.id().to_owned(),
         ":memory:".to_string(),
@@ -146,7 +147,7 @@ async fn request_cancellation() -> Result<(), Error> {
 
     let core_future = spawn(async move {
         let core = Core::new(opts).await.unwrap();
-        core.start(&app.create_identity(None)).await.unwrap();
+        core.start(&ident).await.unwrap();
     });
 
     // Wait until Tanker is in the middle of calling our test HTTP server
