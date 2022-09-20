@@ -61,24 +61,21 @@ def profile_to_rust_target(platform: str, arch: str, sdk: Optional[str]) -> str:
 
 
 def get_android_bin_path() -> Path:
-    # We need to specify an android profile or conan can't find the binary
-    # package. The specific profile is not important since there is only one
-    # binary NDK, the recipe ignores the arch, api_level, etc.
     tankerci.run(
         "conan",
         "install",
-        "android_ndk_installer/r22b@",
+        "android-ndk/r25@",
         "--profile:host",
-        "android-armv7",
+        "linux-x86_64",
         "--profile:build",
         str(tankerci.conan.get_build_profile()),
     )
     _, out = tankerci.run_captured(
         "conan",
         "info",
-        "android_ndk_installer/r22b@",
+        "android-ndk/r25@",
         "--profile",
-        "android-armv7",
+        "linux-x86_64",
         "--profile:build",
         str(tankerci.conan.get_build_profile()),
         "--json",
@@ -429,7 +426,7 @@ def main() -> None:
 
     if args.command == "build":
         profiles = [Profile(p) for p in args.profiles]
-        with tankerci.conan.ConanContextManager([args.remote], conan_home=user_home):
+        with tankerci.conan.ConanContextManager([args.remote, "conancenter"], conan_home=user_home):
             build(
                 profiles=profiles,
                 test=args.test,
@@ -437,7 +434,7 @@ def main() -> None:
     elif args.command == "deploy":
         deploy(args)
     elif args.command == "prepare":
-        with tankerci.conan.ConanContextManager([args.remote], conan_home=user_home):
+        with tankerci.conan.ConanContextManager([args.remote, "conancenter"], conan_home=user_home):
             profiles = [Profile(p) for p in args.profiles]
             prepare(
                 args.tanker_source,
