@@ -29,6 +29,14 @@ TARGET_LIST = [
 ]
 
 
+NDK_ARCH_TARGETS = {
+    "armv7": "arm-linux-androideabi",
+    "armv8": "aarch64-linux-android",
+    "x86_64": "x86_64-linux-android",
+    "x86": "i686-linux-android",
+}
+
+
 def profile_to_rust_target(platform: str, arch: str, sdk: Optional[str]) -> str:
     if platform == "Android":
         if arch == "armv7":
@@ -190,11 +198,17 @@ class Builder:
             package_libs = package_path / "deplibs"
             package_libs.mkdir(parents=True, exist_ok=True)
             for lib_path in depsConfig.all_lib_paths():
-                if str(lib_path).endswith("libunwind.a"):
-                    ui.info_1("skipping", lib_path)
-                    continue
                 ui.info_1("copying", lib_path, "to", package_libs)
                 shutil.copy(lib_path, package_libs)
+
+            if self._is_android_target:
+                ndk_arch = NDK_ARCH_TARGETS[self.arch]
+                android_lib_path = android_bin_path / f"../sysroot/usr/lib/{ndk_arch}"
+                for lib in android_lib_path.glob("*.a"):
+                    if lib.is_dir() or lib.name in ["libc.a", "libm.a", "libdl.a", "libz.a", "libstdc++.a"]:
+                        continue
+                    ui.info_2("Android NDK", ndk_arch, "sysroot", lib.name, "->", package_libs)
+                    shutil.copy(lib, package_libs)
 
             # Apple prefixes symbols with '_'
             tankerci.run(
