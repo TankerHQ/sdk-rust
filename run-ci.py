@@ -64,7 +64,7 @@ def get_android_bin_path() -> Path:
     tankerci.run(
         "conan",
         "install",
-        "android-ndk/r25@",
+        "android-ndk/r22b@",
         "--profile:host",
         "linux-x86_64",
         "--profile:build",
@@ -73,7 +73,7 @@ def get_android_bin_path() -> Path:
     _, out = tankerci.run_captured(
         "conan",
         "info",
-        "android-ndk/r25@",
+        "android-ndk/r22b@",
         "--profile",
         "linux-x86_64",
         "--profile:build",
