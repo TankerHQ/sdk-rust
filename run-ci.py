@@ -26,6 +26,8 @@ TARGET_LIST = [
     "x86_64-apple-darwin",
     "x86_64-unknown-linux-gnu",
     "x86_64-pc-windows-msvc",
+    # special one, it is the same as msvc, but the import lib is renamed to libctanker.a
+    "x86_64-pc-windows-gnu",
 ]
 
 
@@ -231,6 +233,10 @@ class Builder:
             for lib_path in depsConfig.all_lib_paths():
                 ui.info_1("copying", lib_path, "to", native_path)
                 shutil.copy(lib_path, native_path)
+            # handle mingw target
+            mingw_path = self.src_path / "native" / "x86_64-pc-windows-gnu"
+            # prepare is called twice, so ignore when dirs exists
+            shutil.copytree(native_path, mingw_path, dirs_exist_ok=True)
         else:
             self._merge_all_libs(depsConfig, package_path, native_path)
         include_path = package_path / "include" / "ctanker"
@@ -240,6 +246,8 @@ class Builder:
             include_path=include_path,
             dynamic_loading=self._is_windows_target,
         )
+        if self._is_windows_target:
+            shutil.copyfile(native_path / "ctanker.rs", mingw_path / "ctanker.rs")
 
     def prepare(
         self,
@@ -273,6 +281,15 @@ class Builder:
             "cargo", subcommand, "--target", self.target_triplet, *extra_args, cwd=self.src_path,
             env=env
         )
+        if self._is_windows_target:
+            tankerci.run(
+                "cargo",
+                subcommand,
+                "--target",
+                "x86_64-pc-windows-gnu",
+                *extra_args,
+                cwd=self.src_path,
+            )
 
     def build(self) -> None:
         if not self._is_host_target:
