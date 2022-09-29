@@ -10,6 +10,7 @@ import cli_ui as ui  # noqa
 import tankerci
 import tankerci.conan
 import tankerci.cpp
+import tankerci.git
 import tankerci.gitlab
 from tankerci.build_info import DepsConfig
 from tankerci.conan import Profile, TankerSource
@@ -448,9 +449,15 @@ def main() -> None:
     download_artifacts_parser.add_argument("--project-id", required=True)
     download_artifacts_parser.add_argument("--pipeline-id", required=True)
     download_artifacts_parser.add_argument("--job-name", required=True)
+
     deploy_parser = subparsers.add_parser("deploy")
     deploy_parser.add_argument("--version", required=True)
     deploy_parser.add_argument("--registry", required=True)
+
+    write_bridge_dotenv = subparsers.add_parser("write-bridge-dotenv")
+    write_bridge_dotenv.add_argument(
+        "--downstream", dest="downstreams", action="append", required=True
+    )
 
     args = parser.parse_args()
     user_home = None
@@ -481,6 +488,18 @@ def main() -> None:
             pipeline_id=args.pipeline_id,
             job_name=args.job_name,
         )
+    elif args.command == "write-bridge-dotenv":
+        branches = [
+            tankerci.git.matching_branch_or_default(repo) for repo in args.downstreams
+        ]
+        keys = [
+            repo.replace("-", "_").upper() + "_BRIDGE_BRANCH"
+            for repo in args.downstreams
+        ]
+        env_list = "\n".join([f"{k}={v}" for k, v in zip(keys, branches)])
+        with open("bridge.env", "a+") as f:
+            f.write(env_list)
+        ui.info(env_list)
     else:
         parser.print_help()
         sys.exit(1)

@@ -44,6 +44,7 @@ default:
 stages:
   - prepare
   - check
+  - bridge-check
   - deploy
 
 #############################
@@ -64,6 +65,7 @@ stages:
   artifacts:
     paths:
       - native/
+    expire_in: 7 days
 
 ############
 # profiles #
@@ -118,9 +120,9 @@ stages:
   variables:
     TANKER_PROFILES: --profile ios-armv8 --profile ios_simulator-armv8
 
-######################
+#################
 # prepare stage #
-######################
+#################
 
 .rules/prepare:
   rules:
@@ -174,7 +176,6 @@ prepare/deployed/ios/arm:
     - .profiles/ios/arm
     - .prepare
 
-
 ###############
 # check stage #
 ###############
@@ -205,6 +206,7 @@ check/native-from-sources/android:
   extends:
     - .profiles/android
     - .check/native-from-sources
+    - .release-artifacts # Keep built native libs for qa-sdk-rust
   variables:
     TANKER_PROFILES: --profile android-armv8 tanker-static --profile android-x86_64 tanker-static --profile android-x86 tanker-static --profile android-armv7 tanker-static
   tags: !reference [.tags/compilation-linux, tags]
@@ -329,6 +331,7 @@ check/downstream/android:
     - .rules/check/downstream/android
     - .check/downstream
     - .profiles/android
+    - .release-artifacts # Keep built native libs for qa-sdk-rust
   tags: !reference [.tags/linux, tags]
 
 check/downstream/ios/x86_64:
@@ -354,6 +357,68 @@ check/downstream/macos/arm:
     - .rules/check/downstream/macos/arm
     - .check/downstream
     - .profiles/macos/arm
+
+######################
+# bridge-check stage #
+######################
+
+bridge-dotenv:
+  stage: bridge-check
+  inherit:
+    default: # Skip docker image
+      - "before_script"
+  rules:
+    - !reference [ .rules/check/downstream/android, rules ]
+    - !reference [ .rules/mr/manual, rules ]
+  script:
+    - poetry run python run-ci.py write-bridge-dotenv --downstream qa-sdk-rust
+  artifacts:
+    expire_in: 7 days
+    reports:
+      dotenv: bridge.env
+  tags: !reference [.tags/linux, tags]
+
+.bridge/qa-sdk-rust:
+  stage: bridge-check
+  extends:
+    - .variables/bridge-common
+  trigger:
+    project: TankerHQ/qa-sdk-rust
+    branch: $QA_SDK_RUST_BRIDGE_BRANCH
+    strategy: depend
+
+bridge/native-from-sources/qa-sdk-rust:
+  extends:
+    - .bridge/qa-sdk-rust
+  rules:
+    - !reference [ .rules/mr/auto, rules ]
+    - !reference [ .rules/nightly, rules ]
+    - !reference [ .rules/push-master-or-feat, rules ]
+  needs:
+    - bridge-dotenv
+    - check/native-from-sources/android
+  variables:
+    UPSTREAM_JOB_NAME: check/native-from-sources/android
+
+bridge/deployed-native/qa-sdk-rust:
+  extends:
+    - .bridge/qa-sdk-rust
+    - .rules/check/deployed-native
+  needs:
+    - bridge-dotenv
+    - prepare/deployed/android
+  variables:
+    UPSTREAM_JOB_NAME: prepare/deployed/android
+
+bridge/downstream-native/qa-sdk-rust:
+  extends:
+    - .bridge/qa-sdk-rust
+    - .rules/check/downstream/android
+  needs:
+    - bridge-dotenv
+    - check/downstream/android
+  variables:
+    UPSTREAM_JOB_NAME: check/downstream/android
 
 ################
 # deploy stage #
