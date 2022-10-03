@@ -368,6 +368,7 @@ bridge-dotenv:
     default: # Skip docker image
       - "before_script"
   rules:
+    - !reference [ .rules/push-master-or-feat, rules ]
     - !reference [ .rules/check/downstream/android, rules ]
     - !reference [ .rules/mr/manual, rules ]
   script:
