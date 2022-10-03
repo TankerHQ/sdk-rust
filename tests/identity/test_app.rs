@@ -86,15 +86,9 @@ impl TestApp {
         &self,
         oidc_client_id: Option<&str>,
         oidc_provider: Option<&str>,
-        preverified_verification: Option<bool>,
     ) -> Result<(), Error> {
         self.admin
-            .app_update(
-                &self.app.id,
-                oidc_client_id,
-                oidc_provider,
-                preverified_verification,
-            )
+            .app_update(&self.app.id, oidc_client_id, oidc_provider)
             .await
     }
 
