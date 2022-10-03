@@ -171,7 +171,7 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let martine_config = &oidc.users["martine"];
     let martine_identity = app.create_identity(Some(martine_config.email.clone()));
 
-    app.app_update(Some(&oidc.client_id), Some(&oidc.provider), None)
+    app.app_update(Some(&oidc.client_id), Some(&oidc.provider))
         .await?;
 
     let client = reqwest::Client::new();
@@ -384,7 +384,6 @@ async fn check_session_token_is_valid() -> Result<(), Box<dyn std::error::Error>
 #[tokio::test(flavor = "multi_thread")]
 async fn register_fail_with_preverified_email() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
     let id = &app.create_identity(None);
     let email = "mono@chromat.ic";
 
@@ -406,7 +405,6 @@ async fn register_fail_with_preverified_email() -> Result<(), Error> {
 #[tokio::test(flavor = "multi_thread")]
 async fn register_fail_with_preverified_phone_number() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
     let id = &app.create_identity(None);
     let phone_number = "+33639982233";
 
@@ -428,7 +426,6 @@ async fn register_fail_with_preverified_phone_number() -> Result<(), Error> {
 #[tokio::test(flavor = "multi_thread")]
 async fn verify_identity_fail_with_preverified_email() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
     let id = &app.create_identity(None);
     let email = "mono@chromat.ic";
 
@@ -461,7 +458,6 @@ async fn verify_identity_fail_with_preverified_email() -> Result<(), Error> {
 #[tokio::test(flavor = "multi_thread")]
 async fn verify_identity_fail_with_preverified_phone_number() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
     let id = &app.create_identity(None);
     let phone_number = "+33639982233";
 
@@ -494,7 +490,6 @@ async fn verify_identity_fail_with_preverified_phone_number() -> Result<(), Erro
 #[tokio::test(flavor = "multi_thread")]
 async fn set_verification_method_with_preverified_email() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
     let id = &app.create_identity(None);
     let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
     let email = "mono@chromat.ic";
@@ -549,7 +544,6 @@ async fn set_verification_method_with_preverified_email() -> Result<(), Error> {
 #[tokio::test(flavor = "multi_thread")]
 async fn set_verification_method_with_preverified_phone_number() -> Result<(), Error> {
     let app = TestApp::get().await;
-    app.app_update(None, None, Some(true)).await?;
     let id = &app.create_identity(None);
     let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
     let phone_number = "+33639982233".to_string();
