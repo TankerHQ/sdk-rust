@@ -95,7 +95,7 @@ def get_android_bin_path() -> Path:
     try:
         info = json.loads(out)
         package_path = Path(info[0]["package_folder"])
-        bin_path = package_path / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+        bin_path = package_path / "bin/toolchains/llvm/prebuilt/linux-x86_64/bin"
         return bin_path
     except (json.JSONDecodeError, KeyError, IndexError):
         if out:
@@ -198,12 +198,8 @@ class Builder:
             if libctanker_a.exists():
                 libctanker_a.unlink()
 
-            package_libs = package_path / "deplibs"
-            package_libs.mkdir(parents=True, exist_ok=True)
-            for lib_path in depsConfig.all_lib_paths():
-                ui.info_1("copying", lib_path, "to", package_libs)
-                shutil.copy(lib_path, package_libs)
-
+            cxx_package_libs = package_path / "cxx_deplibs"
+            cxx_package_libs.mkdir(parents=True, exist_ok=True)
             if self._is_android_target:
                 ndk_arch = NDK_ARCH_TARGETS[self.arch]
                 android_lib_path = android_bin_path / f"../sysroot/usr/lib/{ndk_arch}"
@@ -212,8 +208,27 @@ class Builder:
                     skipped = ["libc.a", "libm.a", "libdl.a", "libz.a", "libstdc++.a", "libunwind.a"]
                     if lib.is_dir() or lib.name in skipped:
                         continue
-                    ui.info_2("Android NDK", ndk_arch, "sysroot", lib.name, "->", package_libs)
-                    shutil.copy(lib, package_libs)
+                    ui.info_2("Android NDK", ndk_arch, "sysroot", lib.name, "->", cxx_package_libs)
+                    shutil.copy(lib, cxx_package_libs)
+
+            package_libs = package_path / "deplibs"
+            package_libs.mkdir(parents=True, exist_ok=True)
+            for lib_path in depsConfig.all_lib_paths():
+                ios_libcxx = ["libc++.a", "libc++abi.a"]
+                if self._is_ios_target and lib_path.name in ios_libcxx:
+                    dest_dir = cxx_package_libs
+                else:
+                    dest_dir = package_libs
+                ui.info_1("copying", lib_path, "to", dest_dir)
+                shutil.copy(lib_path, dest_dir)
+
+            if self._is_android_target or self._is_ios_target:
+                tankerci.run(
+                    "armerge --keep-symbols '.*' --output libcxx_vendored.a cxx_deplibs/*.a",
+                    shell=True,
+                    env=env,
+                )
+                shutil.copy("libcxx_vendored.a", native_path)
 
             # Apple prefixes symbols with '_'
             tankerci.run(

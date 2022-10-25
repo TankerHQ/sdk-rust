@@ -40,3 +40,6 @@ http = ["tokio/rt-multi-thread", "dep:reqwest", "dep:bytes"]
 # Rustls only supports the sytem store on Windows/Linux/Mac, but this feature also enables the SSL_CERT_FILE env var.
 # If you use self-signed certificates, enable this feature and add your cert to SSL_CERT_FILE or to the system store.
 http-system-certs = ["http", "reqwest?/rustls-tls-native-roots"]
+# For mobile targets, the crate normally links statically with the platform's C++ stdlib
+# If you want to provide your own c++ stdlib instead of using the crate's vendored version, enable this feature
+without_vendored_libcxx = []

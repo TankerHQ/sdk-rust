@@ -59,6 +59,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     if target_family != "windows" {
         println!("cargo:rustc-link-search={}", bindings_folder);
         println!("cargo:rustc-link-lib=static=ctanker",);
+        if !cfg!(feature = "without_vendored_libcxx")
+            && (target_triplet.contains("-linux-android") || target_triplet.contains("-apple-ios"))
+        {
+            println!("cargo:rustc-link-lib=static=cxx_vendored")
+        }
         match target_triplet.as_str() {
             "x86_64-unknown-linux-gnu" => println!("cargo:rustc-link-lib=dylib=stdc++"),
             "x86_64-apple-darwin" => {
