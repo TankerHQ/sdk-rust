@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Tell cargo to link with our native library
     if target_family != "windows" {
         println!("cargo:rustc-link-search={}", bindings_folder);
-        println!("cargo:rustc-link-lib=static=ctanker",);
+        println!("cargo:rustc-link-lib=static=ctanker");
         if !cfg!(feature = "without_vendored_libcxx")
             && (target_triplet.contains("-linux-android") || target_triplet.contains("-apple-ios"))
         {
