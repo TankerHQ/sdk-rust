@@ -237,7 +237,7 @@ async fn share_then_decrypt() -> Result<(), Error> {
     let encrypted = alice.encrypt(plaintext, &Default::default()).await?;
     let resource_id = alice.get_resource_id(&encrypted)?;
 
-    let options = SharingOptions::new().share_with_users(&[bob_public_id]);
+    let options = SharingOptions::new().share_with_users([bob_public_id]);
     alice.share(&[resource_id], &options).await?;
 
     let decrypted = bob.decrypt(&encrypted).await?;
@@ -260,7 +260,7 @@ async fn share_duplicate_user_id() -> Result<(), Error> {
     let encrypted = alice.encrypt(plaintext, &Default::default()).await?;
     let resource_id = alice.get_resource_id(&encrypted)?;
 
-    let options = SharingOptions::new().share_with_users(&[bob_public_id.clone(), bob_public_id]);
+    let options = SharingOptions::new().share_with_users([bob_public_id.clone(), bob_public_id]);
     alice.share(&[resource_id], &options).await?;
 
     let decrypted = bob.decrypt(&encrypted).await?;
@@ -280,7 +280,7 @@ async fn encrypt_and_share_then_decrypt() -> Result<(), Error> {
     let bob = app.start_anonymous(&bob_id).await?;
 
     let plaintext = b"Ludwigsburg";
-    let options = EncryptionOptions::new().share_with_users(&[bob_public_id]);
+    let options = EncryptionOptions::new().share_with_users([bob_public_id]);
     let encrypted = alice.encrypt(plaintext, &options).await?;
     let decrypted = bob.decrypt(&encrypted).await?;
     alice.stop().await?;
@@ -300,7 +300,7 @@ async fn encrypt_no_share_with_self() -> Result<(), Error> {
 
     let plaintext = b"Eclipse";
     let options = EncryptionOptions::new()
-        .share_with_users(&[bob_public_id])
+        .share_with_users([bob_public_id])
         .share_with_self(false);
     let encrypted = alice.encrypt(plaintext, &options).await?;
 
@@ -324,7 +324,7 @@ async fn share_with_provisional_user() -> Result<(), Error> {
     let bob_public_id = app.get_public_identity(&bob_provisional);
 
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
-    let options = EncryptionOptions::new().share_with_users(&[bob_public_id]);
+    let options = EncryptionOptions::new().share_with_users([bob_public_id]);
     let encrypted = alice.encrypt(message, &options).await?;
     alice.stop().await?;
 
@@ -359,8 +359,7 @@ async fn share_with_duplicate_provisional_user() -> Result<(), Error> {
     let bob_public_id = app.get_public_identity(&bob_provisional);
 
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
-    let options =
-        EncryptionOptions::new().share_with_users(&[bob_public_id.clone(), bob_public_id]);
+    let options = EncryptionOptions::new().share_with_users([bob_public_id.clone(), bob_public_id]);
     let encrypted = alice.encrypt(message, &options).await?;
     alice.stop().await?;
 
@@ -431,7 +430,7 @@ async fn attach_provisional_with_single_verif() -> Result<(), Error> {
     let bob_public_id = app.get_public_identity(&bob_provisional);
 
     let alice = app.start_anonymous(&app.create_identity(None)).await?;
-    let options = EncryptionOptions::new().share_with_users(&[bob_public_id]);
+    let options = EncryptionOptions::new().share_with_users([bob_public_id]);
     let encrypted = alice.encrypt(message, &options).await?;
     alice.stop().await?;
 

@@ -48,9 +48,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
-    assert!(!bindings_folder.contains(&"="));
-    assert!(!bindings_folder.contains(&"\0"));
-    assert!(!bindings_folder.contains(&"\n"));
+    assert!(!bindings_folder.contains('='));
+    assert!(!bindings_folder.contains('\0'));
+    assert!(!bindings_folder.contains('\n'));
 
     // Export an env var so we can include ctanker.rs in the source code
     println!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER={}", bindings_folder);
