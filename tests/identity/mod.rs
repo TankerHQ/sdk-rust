@@ -36,7 +36,7 @@ pub fn generate_user_secret(hashed_user_id: &[u8]) -> Vec<u8> {
 
     let random_bytes: [u8; USER_SECRET_SIZE - 1] = rand::thread_rng().gen();
     let mut hasher = Blake2b::<consts::U1>::new();
-    hasher.update(&random_bytes);
+    hasher.update(random_bytes);
     hasher.update(hashed_user_id);
 
     let mut user_secret = random_bytes.to_vec();
@@ -89,7 +89,7 @@ pub fn create_identity(
         "target": "user",
         "value": base64::encode(&hashed_user_id),
         "delegation_signature": base64::encode(signature.as_ref()),
-        "ephemeral_public_signature_key": base64::encode(&sign_keypair.public),
+        "ephemeral_public_signature_key": base64::encode(sign_keypair.public),
         "ephemeral_private_signature_key": base64::encode(sign_keypair.to_bytes().as_ref()),
         "user_secret": base64::encode(user_secret),
     });
@@ -118,7 +118,7 @@ pub fn create_provisional_identity(b64_app_id: &str, email: &str) -> Result<Stri
         "value": email,
         "public_encryption_key": base64::encode(encrypt_pk.as_bytes()),
         "private_encryption_key": base64::encode(encrypt_sk.to_bytes()),
-        "public_signature_key": base64::encode(&sign_keypair.public),
+        "public_signature_key": base64::encode(sign_keypair.public),
         "private_signature_key": base64::encode(sign_keypair.to_bytes().as_ref()),
     });
 

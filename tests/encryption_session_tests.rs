@@ -25,7 +25,7 @@ async fn share_with_enc_sess() -> Result<(), Error> {
     let bob = app.start_anonymous(&bob_id).await?;
 
     let data = b"La Pleiade";
-    let options = EncryptionOptions::new().share_with_users(&[bob_public_id]);
+    let options = EncryptionOptions::new().share_with_users([bob_public_id]);
     let sess = alice.create_encryption_session(&options).await?;
     let encrypted = sess.encrypt(data).await?;
     assert_eq!(bob.decrypt(&encrypted).await?, data);
@@ -41,7 +41,7 @@ async fn encrypt_stream_with_enc_sess() -> Result<(), Error> {
     let bob = app.start_anonymous(&bob_id).await?;
 
     let data = b"La Comedie Humaine";
-    let options = EncryptionOptions::new().share_with_users(&[bob_public_id]);
+    let options = EncryptionOptions::new().share_with_users([bob_public_id]);
     let sess = alice.create_encryption_session(&options).await?;
     let encrypted = sess.encrypt_stream(data as &[u8]).await?;
 
