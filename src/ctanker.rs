@@ -1,3 +1,6 @@
+// C types can vary by target arch, so casts that look unnecessary on x86 are actually needed
+#![allow(clippy::unnecessary_cast)]
+
 #[cfg(target_family = "windows")]
 macro_rules! tanker_call {
     ($self:ident, $func_name:ident($($args:tt)*)) => { $self.ctanker_api.$func_name($($args)*) };
