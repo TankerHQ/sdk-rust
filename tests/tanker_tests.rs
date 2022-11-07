@@ -307,7 +307,7 @@ async fn encrypt_no_share_with_self() -> Result<(), Error> {
     let _ = bob.decrypt(&encrypted).await.unwrap();
     let err = alice.decrypt(&encrypted).await.unwrap_err();
     assert_eq!(err.code(), ErrorCode::InvalidArgument);
-    assert!(err.message().contains("can't find keys"));
+    assert!(err.message().contains("key not found"));
 
     alice.stop().await?;
     bob.stop().await?;
