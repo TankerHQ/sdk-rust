@@ -81,7 +81,7 @@ async fn encrypt_stream_with_padding() -> Result<(), futures::io::Error> {
     let mut encrypted = Vec::new();
     encrypted_stream.read_to_end(&mut encrypted).await.unwrap();
 
-    assert_eq!(encrypted.len(), 3146248);
+    assert_eq!(encrypted.len(), 3 * 1024 * 1024 + 389);
 
     let mut decrypted_stream = tanker.decrypt_stream(encrypted.as_slice()).await?;
     let mut decrypted = Vec::new();
