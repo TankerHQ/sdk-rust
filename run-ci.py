@@ -95,7 +95,7 @@ def get_android_bin_path() -> Path:
     try:
         info = json.loads(out)
         package_path = Path(info[0]["package_folder"])
-        bin_path = package_path / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+        bin_path = package_path / "bin/toolchains/llvm/prebuilt/linux-x86_64/bin"
         return bin_path
     except (json.JSONDecodeError, KeyError, IndexError):
         if out:
