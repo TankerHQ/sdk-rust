@@ -59,8 +59,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     if target_family != "windows" {
         println!("cargo:rustc-link-search={}", bindings_folder);
         println!("cargo:rustc-link-lib=static=ctanker");
+        // FIXME: Re-enable vendoring on iOS after downstream fixes
         if !cfg!(feature = "without_vendored_libcxx")
-            && (target_triplet.contains("-linux-android") || target_triplet.contains("-apple-ios"))
+            && (target_triplet.contains("-linux-android")/* || target_triplet.contains("-apple-ios") */)
         {
             println!("cargo:rustc-link-lib=static=cxx_vendored")
         }
