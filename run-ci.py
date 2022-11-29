@@ -31,7 +31,6 @@ TARGET_LIST = [
     "x86_64-pc-windows-gnu",
 ]
 
-
 NDK_ARCH_TARGETS = {
     "armv7": "arm-linux-androideabi",
     "armv8": "aarch64-linux-android",
@@ -204,11 +203,25 @@ class Builder:
                 ndk_arch = NDK_ARCH_TARGETS[self.arch]
                 android_lib_path = android_bin_path / f"../sysroot/usr/lib/{ndk_arch}"
                 for lib in android_lib_path.glob("*.a"):
-                    # Rust already knows to link some (non-C++) NDK libs, skip them to avoid duplicate symbols
-                    skipped = ["libc.a", "libm.a", "libdl.a", "libz.a", "libstdc++.a", "libunwind.a"]
+                    # Rust already links some (non-C++) NDK libs, skip to avoid duplicate symbols
+                    skipped = [
+                        "libc.a",
+                        "libm.a",
+                        "libdl.a",
+                        "libz.a",
+                        "libstdc++.a",
+                        "libunwind.a",
+                    ]
                     if lib.is_dir() or lib.name in skipped:
                         continue
-                    ui.info_2("Android NDK", ndk_arch, "sysroot", lib.name, "->", cxx_package_libs)
+                    ui.info_2(
+                        "Android NDK",
+                        ndk_arch,
+                        "sysroot",
+                        lib.name,
+                        "->",
+                        cxx_package_libs,
+                    )
                     shutil.copy(lib, cxx_package_libs)
 
             package_libs = package_path / "deplibs"
@@ -300,7 +313,7 @@ class Builder:
         )
         self._prepare_profile()
 
-    def _cargo(self, subcommand: str, *extra_args) -> None:
+    def _cargo(self, subcommand: str, *extra_args: str) -> None:
         env = os.environ.copy()
         if self._is_android_target:
             android_bin_path = get_android_bin_path()
@@ -310,8 +323,13 @@ class Builder:
             ui.info(f'Using {env["AR"]}')
 
         tankerci.run(
-            "cargo", subcommand, "--target", self.target_triplet, *extra_args, cwd=self.src_path,
-            env=env
+            "cargo",
+            subcommand,
+            "--target",
+            self.target_triplet,
+            *extra_args,
+            cwd=self.src_path,
+            env=env,
         )
         if self._is_windows_target:
             tankerci.run(
@@ -366,7 +384,9 @@ class Builder:
                 Path("target") / "debug/deps",
             )
         self._cargo("test")
-        self._cargo("test", "--no-default-features") # Also test without HTTP reverse bindings on desktops
+        self._cargo(
+            "test", "--no-default-features"
+        )  # Also test without HTTP reverse bindings on desktops
 
 
 def prepare(
@@ -491,7 +511,9 @@ def main() -> None:
 
     if args.command == "build":
         profiles = [Profile(p) for p in args.profiles]
-        with tankerci.conan.ConanContextManager([args.remote, "conancenter"], conan_home=user_home):
+        with tankerci.conan.ConanContextManager(
+            [args.remote, "conancenter"], conan_home=user_home
+        ):
             build(
                 profiles=profiles,
                 test=args.test,
@@ -499,7 +521,9 @@ def main() -> None:
     elif args.command == "deploy":
         deploy(args)
     elif args.command == "prepare":
-        with tankerci.conan.ConanContextManager([args.remote, "conancenter"], conan_home=user_home):
+        with tankerci.conan.ConanContextManager(
+            [args.remote, "conancenter"], conan_home=user_home
+        ):
             profiles = [Profile(p) for p in args.profiles]
             prepare(
                 args.tanker_source,
