@@ -418,6 +418,16 @@ def deploy(args: argparse.Namespace) -> None:
     tankerci.run("cargo", "publish", "--allow-dirty", f"--registry={registry}")
 
 
+def matching_downstream_branch(repo: str) -> str:
+    current_ref = os.environ.get(
+        "UPSTREAM_COMMIT_REF_NAME", os.environ["CI_COMMIT_REF_NAME"]
+    )
+    if tankerci.git.remote_branch_exists(current_ref, repo):
+        return current_ref
+    else:
+        return "master"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -504,9 +514,7 @@ def main() -> None:
             job_name=args.job_name,
         )
     elif args.command == "write-bridge-dotenv":
-        branches = [
-            tankerci.git.matching_branch_or_default(repo) for repo in args.downstreams
-        ]
+        branches = [matching_downstream_branch(repo) for repo in args.downstreams]
         keys = [
             repo.replace("-", "_").upper() + "_BRIDGE_BRANCH"
             for repo in args.downstreams
