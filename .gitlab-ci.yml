@@ -229,6 +229,7 @@ check/native-from-sources/ios/x86_64:
   extends:
     - .profiles/ios/x86_64
     - .check/native-from-sources
+    - .release-artifacts # Keep built native libs for qa-sdk-rust
   variables:
     TANKER_PROFILES: --profile ios-armv8 --profile ios_simulator-x86_64
 
@@ -236,6 +237,7 @@ check/native-from-sources/ios/arm:
   extends:
     - .profiles/ios/arm
     - .check/native-from-sources
+    - .release-artifacts # Keep built native libs for qa-sdk-rust
   variables:
     TANKER_PROFILES: --profile ios-armv8 --profile ios_simulator-armv8
 
@@ -339,12 +341,14 @@ check/downstream/ios/x86_64:
     - .rules/check/downstream/ios
     - .check/downstream
     - .profiles/ios/x86_64
+    - .release-artifacts # Keep built native libs for qa-sdk-rust
 
 check/downstream/ios/arm:
   extends:
     - .rules/check/downstream/ios
     - .check/downstream
     - .profiles/ios/arm
+    - .release-artifacts # Keep built native libs for qa-sdk-rust
 
 check/downstream/macos/x86_64:
   extends:
@@ -362,6 +366,11 @@ check/downstream/macos/arm:
 # bridge-check stage #
 ######################
 
+.rules/check/downstream/ios-or-android:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "pipeline" && $UPSTREAM_JOB_TARGET != "android" && $UPSTREAM_JOB_TARGET !~ /\Aios*\z/
+      when: never
+
 bridge-dotenv:
   stage: bridge-check
   inherit:
@@ -369,7 +378,8 @@ bridge-dotenv:
       - "before_script"
   rules:
     - !reference [ .rules/push-master-or-feat, rules ]
-    - !reference [ .rules/check/downstream/android, rules ]
+    - !reference [ .rules/check/downstream/ios-or-android, rules ]
+    - !reference [ .rules/check/downstream, rules ]
     - !reference [ .rules/mr/manual, rules ]
   script:
     - poetry run python run-ci.py write-bridge-dotenv --downstream qa-sdk-rust
@@ -388,7 +398,7 @@ bridge-dotenv:
     branch: $QA_SDK_RUST_BRIDGE_BRANCH
     strategy: depend
 
-bridge/native-from-sources/qa-sdk-rust:
+bridge/native-from-sources/qa-sdk-rust/android:
   extends:
     - .bridge/qa-sdk-rust
   rules:
@@ -399,9 +409,10 @@ bridge/native-from-sources/qa-sdk-rust:
     - bridge-dotenv
     - check/native-from-sources/android
   variables:
+    UPSTREAM_JOB_TARGET: android
     UPSTREAM_JOB_NAME: check/native-from-sources/android
 
-bridge/deployed-native/qa-sdk-rust:
+bridge/deployed-native/qa-sdk-rust/android:
   extends:
     - .bridge/qa-sdk-rust
     - .rules/check/deployed-native
@@ -409,9 +420,10 @@ bridge/deployed-native/qa-sdk-rust:
     - bridge-dotenv
     - prepare/deployed/android
   variables:
+    UPSTREAM_JOB_TARGET: android
     UPSTREAM_JOB_NAME: prepare/deployed/android
 
-bridge/downstream-native/qa-sdk-rust:
+bridge/downstream-native/qa-sdk-rust/android:
   extends:
     - .bridge/qa-sdk-rust
     - .rules/check/downstream/android
@@ -419,7 +431,50 @@ bridge/downstream-native/qa-sdk-rust:
     - bridge-dotenv
     - check/downstream/android
   variables:
+    UPSTREAM_JOB_TARGET: android
     UPSTREAM_JOB_NAME: check/downstream/android
+
+bridge/native-from-sources/qa-sdk-rust/ios:
+  extends:
+    - .bridge/qa-sdk-rust
+  rules:
+    - !reference [ .rules/mr/auto, rules ]
+    - !reference [ .rules/nightly, rules ]
+    - !reference [ .rules/push-master-or-feat, rules ]
+  needs:
+    - bridge-dotenv
+    - check/native-from-sources/ios/arm
+    - check/native-from-sources/ios/x86_64
+  variables:
+    UPSTREAM_JOB_TARGET: ios
+    UPSTREAM_JOB_NAME_ARM: check/native-from-sources/ios/arm
+    UPSTREAM_JOB_NAME_X86_64: check/native-from-sources/ios/x86_64
+
+bridge/deployed-native/qa-sdk-rust/ios:
+  extends:
+    - .bridge/qa-sdk-rust
+    - .rules/check/deployed-native
+  needs:
+    - bridge-dotenv
+    - prepare/deployed/ios/arm
+    - prepare/deployed/ios/x86_64
+  variables:
+    UPSTREAM_JOB_TARGET: ios
+    UPSTREAM_JOB_NAME_ARM: prepare/deployed/ios/arm
+    UPSTREAM_JOB_NAME_X86_64: prepare/deployed/ios/x86_64
+
+bridge/downstream-native/qa-sdk-rust/ios:
+  extends:
+    - .bridge/qa-sdk-rust
+    - .rules/check/downstream/ios
+  needs:
+    - bridge-dotenv
+    - check/downstream/ios/arm
+    - check/downstream/ios/x86_64
+  variables:
+    UPSTREAM_JOB_TARGET: ios
+    UPSTREAM_JOB_NAME_ARM: check/downstream/ios/arm
+    UPSTREAM_JOB_NAME_X86_64: check/downstream/ios/x86_64
 
 ################
 # deploy stage #
