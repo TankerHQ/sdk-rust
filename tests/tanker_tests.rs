@@ -73,7 +73,8 @@ async fn encrypt_and_decrypt() -> Result<(), Error> {
     Ok(())
 }
 
-const SIMPLE_ENCRYPTION_OVERHEAD: usize = 17;
+// Encryption format v10 overhead
+const SIMPLE_ENCRYPTION_OVERHEAD: usize = 49;
 const SIMPLE_PADDED_ENCRYPTION_OVERHEAD: usize = SIMPLE_ENCRYPTION_OVERHEAD + 1;
 
 #[tokio::test(flavor = "multi_thread")]

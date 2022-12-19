@@ -153,13 +153,15 @@ async fn remove_member_from_group() -> Result<(), Error> {
         .update_group_members(&group_id, &[], &[bob_pub_id])
         .await?;
 
-    let encrypted = alice.encrypt(msg, &options).await?;
+    let charles = app.start_anonymous(&app.create_identity(None)).await?;
+    let encrypted = charles.encrypt(msg, &options).await?;
 
     let err = bob.decrypt(&encrypted).await.unwrap_err();
     assert_eq!(err.code(), ErrorCode::InvalidArgument);
 
     alice.stop().await?;
     bob.stop().await?;
+    charles.stop().await?;
     Ok(())
 }
 
