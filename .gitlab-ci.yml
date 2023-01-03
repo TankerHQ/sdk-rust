@@ -381,6 +381,7 @@ bridge-dotenv:
     - !reference [ .rules/check/downstream/ios-or-android, rules ]
     - !reference [ .rules/check/downstream, rules ]
     - !reference [ .rules/mr/manual, rules ]
+    - !reference [ .rules/nightly, rules ]
   script:
     - poetry run python run-ci.py write-bridge-dotenv --downstream qa-sdk-rust
   artifacts:
