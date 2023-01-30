@@ -38,12 +38,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let bindings_folder = bindings_folder.to_str().expect("Invalid character in path");
 
-    println!(
-        "cargo:rerun-if-changed={bindings_folder}/{BINDGEN_OUTPUT_FILENAME}"
-    );
-    println!(
-        "cargo:rerun-if-changed={bindings_folder}/{lib_filename}"
-    );
+    println!("cargo:rerun-if-changed={bindings_folder}/{BINDGEN_OUTPUT_FILENAME}");
+    println!("cargo:rerun-if-changed={bindings_folder}/{lib_filename}");
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
     assert!(!bindings_folder.contains('='));
