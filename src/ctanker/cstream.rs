@@ -101,9 +101,9 @@ impl<UserStream: AsyncRead + Unpin> Drop for TankerStream<UserStream> {
         };
         if let Err(e) = block_on(fut) {
             if cfg!(debug_assertions) {
-                panic!("Failed to close Tanker stream: {}", e);
+                panic!("Failed to close Tanker stream: {e}");
             } else {
-                eprintln!("Failed to close Tanker stream: {}", e);
+                eprintln!("Failed to close Tanker stream: {e}");
             }
         }
     }

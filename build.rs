@@ -39,12 +39,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let bindings_folder = bindings_folder.to_str().expect("Invalid character in path");
 
     println!(
-        "cargo:rerun-if-changed={}/{}",
-        bindings_folder, BINDGEN_OUTPUT_FILENAME
+        "cargo:rerun-if-changed={bindings_folder}/{BINDGEN_OUTPUT_FILENAME}"
     );
     println!(
-        "cargo:rerun-if-changed={}/{}",
-        bindings_folder, lib_filename
+        "cargo:rerun-if-changed={bindings_folder}/{lib_filename}"
     );
 
     // Paths can contain anything, but env vars are a liiitle more restricted. Sanity checks!
@@ -53,11 +51,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert!(!bindings_folder.contains('\n'));
 
     // Export an env var so we can include ctanker.rs in the source code
-    println!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER={}", bindings_folder);
+    println!("cargo:rustc-env=NATIVE_BINDINGS_FOLDER={bindings_folder}");
 
     // Tell cargo to link with our native library
     if target_family != "windows" {
-        println!("cargo:rustc-link-search={}", bindings_folder);
+        println!("cargo:rustc-link-search={bindings_folder}");
         println!("cargo:rustc-link-lib=static=ctanker");
         // FIXME: Re-enable vendoring on iOS after downstream fixes
         if !cfg!(feature = "without_vendored_libcxx")
@@ -89,9 +87,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             "release"
         };
 
-        let tankersdk_bin_path = format!("native/{}", target_triplet);
+        let tankersdk_bin_path = format!("native/{target_triplet}");
         let tankersdk_bin_path = Path::new(&tankersdk_bin_path);
-        let unit_test_path = format!("target/{}/{}/deps/", target_triplet, build_type);
+        let unit_test_path = format!("target/{target_triplet}/{build_type}/deps/");
         let unit_test_path = Path::new(&unit_test_path);
         std::fs::create_dir_all(unit_test_path)?;
         let target_path = unit_test_path.join("ctanker.dll");

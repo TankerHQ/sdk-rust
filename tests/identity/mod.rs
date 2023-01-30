@@ -148,7 +148,7 @@ pub fn get_public_identity(identity_b64: &str) -> Result<String, Error> {
         Some(t) => {
             return Err(Error::new(
                 ErrorCode::InvalidArgument,
-                format!("Unsupported identity type: {}", t),
+                format!("Unsupported identity type: {t}"),
             ))
         }
         None => return Err(invalid_arg()),

@@ -27,7 +27,7 @@ async fn spawn_test_http_server(svc: impl Handler<(), Body> + Clone + Send + 'st
     let addr = SocketAddr::from(([127, 0, 0, 1], 0));
     let server = axum::Server::bind(&addr).serve(app.into_make_service());
     let addr = server.local_addr();
-    let _ = spawn(server);
+    std::mem::drop(spawn(server));
     addr.port()
 }
 
