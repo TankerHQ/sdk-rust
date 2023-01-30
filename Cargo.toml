@@ -2,7 +2,7 @@
 name = "tankersdk"
 version = "0.1.0"
 edition = "2021"
-authors = ["Tanker Team <contact@tanker.io>"]
+authors = ["Tanker Team"]
 license = "Apache-2.0"
 publish = ["tanker", "tanker-dev"]
 include = ["native", "src", "tests", "build.rs"]
