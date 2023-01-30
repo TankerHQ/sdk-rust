@@ -25,7 +25,7 @@ impl Admin {
     ) -> Result<Self, Error> {
         let headers = [
             (ACCEPT, "application/json"),
-            (AUTHORIZATION, &format!("Bearer {}", app_management_token)),
+            (AUTHORIZATION, &format!("Bearer {app_management_token}")),
         ]
         .iter()
         .map(|(k, v)| (k.clone(), HeaderValue::from_str(v).unwrap()))

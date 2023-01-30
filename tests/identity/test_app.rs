@@ -154,7 +154,7 @@ where
 impl Drop for TestApp {
     fn drop(&mut self) {
         if let Err(err) = async_drop_in_thread(self.admin.delete_app(&self.app.id)) {
-            panic!("Error deleting the test app: {}", err);
+            panic!("Error deleting the test app: {err}");
         }
     }
 }

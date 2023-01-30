@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 fn safe_get_env(env_var: &str) -> String {
-    let val = std::env::var(env_var).unwrap_or_else(|_| panic!("Env var {} undefined", env_var));
+    let val = std::env::var(env_var).unwrap_or_else(|_| panic!("Env var {env_var} undefined"));
     if val.is_empty() {
-        panic!("Env var {} is empty", env_var);
+        panic!("Env var {env_var} is empty");
     }
     val
 }

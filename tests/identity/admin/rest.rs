@@ -41,7 +41,7 @@ pub async fn admin_rest_request(req: reqwest::RequestBuilder) -> Result<Map<Stri
     } else {
         Err(Error::new(
             ErrorCode::InternalError,
-            format!("Request error: {}", reply),
+            format!("Request error: {reply}"),
         ))
     }
 }

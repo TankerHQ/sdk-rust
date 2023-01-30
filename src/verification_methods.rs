@@ -76,7 +76,7 @@ impl VerificationMethod {
             CMethodType::E2ePassphrase => Ok(VerificationMethod::E2ePassphrase),
             CMethodType::Invalid => Err(Error::new(
                 ErrorCode::InternalError,
-                format!("Invalid verification method type {}", ctype),
+                format!("Invalid verification method type {ctype}"),
             )),
         }
     }
