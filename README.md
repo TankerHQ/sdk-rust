@@ -1,3 +1,5 @@
+<a href="#readme"><img src="https://raw.githubusercontent.com/TankerHQ/spec/master/img/tanker-logotype-blue-nomargin-350.png" alt="Tanker logo" width="175" /></a>
+
 [![License][https://img.shields.io/badge/License-Apache%202.0-blue.svg]][https://opensource.org/licenses/Apache-2.0]
 
 # Tanker Rust SDK
@@ -19,7 +21,3 @@ API documentation is also available through rustdoc, and can be viewed in your I
 We are actively working to allow external developers to build and test this project from source.
 That being said, we welcome feedback on the Rust SDK, [bug reports](https://github.com/TankerHQ/sdk-rust/issues),
 and bug fixes in the form of [pull requests](https://github.com/TankerHQ/sdk-rust/pulls).
-
-## License
-
-The Tanker Rust SDK is licensed under the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
