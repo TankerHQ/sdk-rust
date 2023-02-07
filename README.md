@@ -1,6 +1,6 @@
 <a href="#readme"><img src="https://raw.githubusercontent.com/TankerHQ/spec/master/img/tanker-logotype-blue-nomargin-350.png" alt="Tanker logo" width="175" /></a>
 
-[![License][https://img.shields.io/badge/License-Apache%202.0-blue.svg]][https://opensource.org/licenses/Apache-2.0]
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # Tanker Rust SDK
 
