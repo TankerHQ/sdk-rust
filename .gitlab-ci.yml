@@ -27,14 +27,38 @@ workflow:
       variables:
         CONAN_REMOTE: "artifactory"
 
+#################
+# Extend blocks #
+#################
+
+.before-script/download-artifacts:
+  before_script:
+    - poetry run python run-ci.py download-artifacts --project-id=$UPSTREAM_PROJECT_ID --pipeline-id=$UPSTREAM_PIPELINE_ID --job-name=$UPSTREAM_JOB_NAME
+
+.before-script/python:
+  before_script:
+    - poetry run python -m pip install --upgrade pip
+    - poetry install
+
+.before-script/rust:
+  before_script:
+    - cargo --version
+    - rustc --version
+
+.release-artifacts:
+  artifacts:
+    paths:
+      - native/
+    expire_in: 7 days
+
 ###########
 # Default #
 ###########
 
 default:
   before_script:
-    - poetry run python -m pip install --upgrade pip
-    - poetry install
+    - !reference [.before-script/python, before_script]
+    - !reference [.before-script/rust, before_script]
   image: registry.gitlab.com/tankerhq/docker/sdk-rust:latest
 
 ##########
@@ -47,26 +71,6 @@ stages:
   - bridge-check
   - deploy
 
-#############################
-# Default settings override #
-#############################
-
-.before-script/download-artifacts:
-  before_script:
-    - poetry run python -m pip install --upgrade pip
-    - poetry install
-    - poetry run python run-ci.py download-artifacts --project-id=$UPSTREAM_PROJECT_ID --pipeline-id=$UPSTREAM_PIPELINE_ID --job-name=$UPSTREAM_JOB_NAME
-
-#################
-# Extend blocks #
-#################
-
-.release-artifacts:
-  artifacts:
-    paths:
-      - native/
-    expire_in: 7 days
-
 ############
 # profiles #
 ############
@@ -76,16 +80,17 @@ stages:
     TANKER_PROFILES: --profile linux-x86_64
 
 .profiles/windows:
+  extends:
+    - .tags/windows
   before_script:
-    - poetry run python -m pip install --upgrade pip
-    - poetry install
+    - !reference [default, before_script]
     # Powershell doesn't split env variable when expanding it.
     # So, we are using the native syntax to create an array, which will be correctly expanded.
     - $TANKER_PROFILES = "--profile", "windows-x86_64", "shared"
 
 .profiles/windows/artifacts:
   extends:
-    - .tags/windows
+    - .profiles/windows
   before_script:
     - !reference [.profiles/windows, before_script]
     - !reference [.before-script/download-artifacts, before_script]
@@ -148,7 +153,6 @@ prepare/deployed/windows:
   extends:
     - .profiles/windows
     - .prepare
-  tags: !reference [.tags/windows, tags]
 
 prepare/deployed/android:
   extends:
@@ -267,7 +271,6 @@ check/deployed-native/windows:
     - .check/deployed-native
   needs:
     - prepare/deployed/windows
-  tags: !reference [.tags/windows, tags]
 
 check/deployed-native/android:
   extends:
@@ -307,8 +310,9 @@ check/deployed-native/ios/arm:
 
 .check/downstream:
   stage: check
-  extends:
-    - .before-script/download-artifacts
+  before_script:
+    - !reference [default, before_script]
+    - !reference [.before-script/download-artifacts, before_script]
   dependencies: []
   script:
     - poetry run python run-ci.py --isolate-conan-user-home --remote $CONAN_REMOTE prepare --use-tanker=upstream $TANKER_PROFILES
@@ -326,7 +330,6 @@ check/downstream/windows:
     - .rules/check/downstream/windows
     - .check/downstream
     - .profiles/windows/artifacts
-  tags: !reference [.tags/windows, tags]
 
 check/downstream/android:
   extends:
@@ -374,8 +377,9 @@ check/downstream/macos/arm:
 bridge-dotenv:
   stage: bridge-check
   inherit:
-    default: # Skip docker image
-      - "before_script"
+    default: [] # Skip docker image
+  before_script:
+    - !reference [.before-script/python, before_script]
   rules:
     - !reference [ .rules/push-master-or-feat, rules ]
     - !reference [ .rules/check/downstream/ios-or-android, rules ]
