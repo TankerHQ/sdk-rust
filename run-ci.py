@@ -38,6 +38,13 @@ NDK_ARCH_TARGETS = {
     "x86": "i686-linux-android",
 }
 
+CLANG_RT_ARCH_TARGETS = {
+    "armv7": "arm-android",
+    "armv8": "aarch64-android",
+    "x86_64": "x86_64-android",
+    "x86": "i686-android",
+}
+
 
 def profile_to_rust_target(platform: str, arch: str, sdk: Optional[str]) -> str:
     if platform == "Android":
@@ -74,7 +81,7 @@ def get_android_bin_path() -> Path:
     tankerci.run(
         "conan",
         "install",
-        "android-ndk/r22b@",
+        "android-ndk/r25c@",
         "--profile:host",
         "linux-x86_64",
         "--profile:build",
@@ -83,7 +90,7 @@ def get_android_bin_path() -> Path:
     _, out = tankerci.run_captured(
         "conan",
         "info",
-        "android-ndk/r22b@",
+        "android-ndk/r25c@",
         "--profile",
         "linux-x86_64",
         "--profile:build",
@@ -179,6 +186,65 @@ class Builder:
             ui.info_2(header, "->", header_dest_dir)
             shutil.copy(header, header_dest_dir)
 
+    # Import only soft float128 builtins from compiler-rt
+    # This is necessary on 64bit android archs, as Clang doesn't build them by default,
+    # and Google's NDK distribution doesn't take care of that either...
+    @staticmethod
+    def _armerge_soft_float128_compiler_rt_builtins(compiler_rt_lib: Path, output_path: Path, env: dict[str, str]):
+        f128_builtins = [
+                "__addtf3",
+                "__subtf3",
+                "__multf3",
+                "__divtf3",
+                "__negtf2",
+                "__extenddftf2",
+                "__extendsftf2",
+                "__trunctfdf2",
+                "__trunctfsf2",
+                "__fixdfti",
+                "__fixsfti",
+                "__fixunsdfti",
+                "__fixunssfti",
+                "__fixtfdi",
+                "__fixtfsi",
+                "__fixtfti",
+                "__fixunstfdi",
+                "__fixunstfsi",
+                "__fixunstfti",
+                "__floattidf",
+                "__floattisf",
+                "__floatuntidf",
+                "__floatuntisf",
+                "__floatditf",
+                "__floatsitf",
+                "__floattitf",
+                "__floatunditf",
+                "__floatunsitf",
+                "__floatuntitf",
+                "__cmptf2",
+                "__unordtf2",
+                "__eqtf2",
+                "__getf2",
+                "__gttf2",
+                "__letf2",
+                "__lttf2",
+                "__netf2",
+                "__powitf2",
+                "__multc3",
+                "__divtc3",
+                ]
+        keep_symbol_args = [e for sym_name in f128_builtins for e in ['-k', sym_name]]
+
+        tankerci.run(
+            "armerge",
+            *keep_symbol_args,
+            "--output",
+            str(output_path.relative_to(Path.cwd())),
+            str(compiler_rt_lib),
+            shell=False,
+            env=env,
+        )
+
     def _merge_all_libs(
         self, depsConfig: DepsConfig, package_path: Path, native_path: Path
     ) -> None:
@@ -202,8 +268,23 @@ class Builder:
             if self._is_android_target:
                 ndk_arch = NDK_ARCH_TARGETS[self.arch]
                 android_lib_path = android_bin_path / f"../sysroot/usr/lib/{ndk_arch}"
+
+                # Starting with NDK r23, Google in its infinite wisdom has decided to make things more interesting
+                # libgcc is gone, and now we use clang's libcxx and compiler-rt.
+                # Unfortunately, the libcxx_static.a is currently missing soft float128 builtins for 64bit archs
+                # (See https://reviews.llvm.org/D53608 and https://github.com/llvm/llvm-project/issues/51395)
+                # It is possible to find those symbols in the separate libclang_rt.builtins libs
+                # However, we can't pull in all of rt.builtins, or we will have duplicate symbols and fail linking
+                if self.arch in ['x86_64', 'armv8']:
+                    compiler_rt_arch = CLANG_RT_ARCH_TARGETS[self.arch]
+                    compiler_rt_dir = android_bin_path / f"../lib64/clang/14.0.7/lib/linux/"
+                    compiler_rt_lib = compiler_rt_dir / f"libclang_rt.builtins-{compiler_rt_arch}.a"
+                    out_path = cxx_package_libs / f"libclang_rt.builtins.float128-{compiler_rt_arch}.a"
+                    self._armerge_soft_float128_compiler_rt_builtins(compiler_rt_lib, out_path, env)
+
                 for lib in android_lib_path.glob("*.a"):
                     # Rust already links some (non-C++) NDK libs, skip to avoid duplicate symbols
+                    # Also we already link rt builtins above, so we don't need/can't have these
                     skipped = [
                         "libc.a",
                         "libm.a",
@@ -211,6 +292,7 @@ class Builder:
                         "libz.a",
                         "libstdc++.a",
                         "libunwind.a",
+                        "libcompiler_rt-extras.a",
                     ]
                     if lib.is_dir() or lib.name in skipped:
                         continue
