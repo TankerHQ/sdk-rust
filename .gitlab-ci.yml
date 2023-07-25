@@ -384,6 +384,7 @@ bridge-dotenv:
     - !reference [ .rules/push-master-or-feat, rules ]
     - !reference [ .rules/check/downstream/ios-or-android, rules ]
     - !reference [ .rules/check/downstream, rules ]
+    - !reference [ .rules/web/auto, rules ]
     - !reference [ .rules/mr/manual, rules ]
     - !reference [ .rules/nightly, rules ]
   script:
