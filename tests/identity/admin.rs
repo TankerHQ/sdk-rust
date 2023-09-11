@@ -3,9 +3,9 @@ mod rest;
 pub use rest::admin_rest_request;
 
 use super::App;
+use crate::identity::test_app::OidcConfig;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde_json::json;
-use serde_json::Value;
 use tankersdk::Error;
 
 #[derive(Debug)]
@@ -63,29 +63,24 @@ impl Admin {
         Ok(())
     }
 
-    pub async fn app_update(
-        &self,
-        id: &str,
-        oidc_client_id: Option<&str>,
-        oidc_provider: Option<&str>,
-    ) -> Result<(), Error> {
+    pub async fn app_update(&self, id: &str, oidc_provider: &OidcConfig) -> Result<(), Error> {
         let url = self.make_url(id);
-        let mut json = serde_json::Map::<_, _>::new();
-        if let Some(oidc_client_id) = oidc_client_id {
-            json.insert("oidc_client_id".to_owned(), oidc_client_id.into());
-        }
-        if let Some(oidc_provider) = oidc_provider {
-            json.insert("oidc_provider".to_owned(), oidc_provider.into());
-        }
-        let json: Value = json.into();
-
-        admin_rest_request(self.client.patch(&url).json(&json)).await?;
+        admin_rest_request(self.client.patch(&url).json(&json!({
+            "oidc_providers": [
+                {
+                    "issuer": oidc_provider.issuer.clone(),
+                    "client_id": oidc_provider.client_id.clone(),
+                    "display_name": oidc_provider.provider_name.clone(),
+                }
+            ]
+        })))
+        .await?;
         Ok(())
     }
 
     fn make_url(&self, id: &str) -> String {
         let id = base64::decode(id).unwrap();
         let id = base64::encode_config(id, base64::URL_SAFE_NO_PAD);
-        format!("{}/v1/apps/{}", &self.app_management_url, id)
+        format!("{}/v2/apps/{}", &self.app_management_url, id)
     }
 }

@@ -171,8 +171,7 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let martine_config = &oidc.users["martine"];
     let martine_identity = app.create_identity(Some(martine_config.email.clone()));
 
-    app.app_update(Some(&oidc.client_id), Some(&oidc.provider))
-        .await?;
+    app.app_update(oidc).await?;
 
     let client = reqwest::Client::new();
     let response = client
