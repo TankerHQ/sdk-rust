@@ -18,7 +18,8 @@ pub struct OidcUser {
 pub struct OidcConfig {
     pub client_id: String,
     pub client_secret: String,
-    pub provider: String,
+    pub provider_name: String,
+    pub issuer: String,
     pub users: HashMap<String, OidcUser>,
 }
 
@@ -52,7 +53,8 @@ impl OidcConfig {
         Self {
             client_id: safe_get_env("TANKER_OIDC_CLIENT_ID"),
             client_secret: safe_get_env("TANKER_OIDC_CLIENT_SECRET"),
-            provider: safe_get_env("TANKER_OIDC_PROVIDER"),
+            provider_name: safe_get_env("TANKER_OIDC_PROVIDER"),
+            issuer: safe_get_env("TANKER_OIDC_ISSUER"),
             users: vec![
                 (
                     "martine".into(),

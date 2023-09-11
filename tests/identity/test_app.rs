@@ -5,7 +5,7 @@ mod config;
 use super::Admin;
 use super::App;
 use crate::identity::{create_identity, create_provisional_identity, get_public_identity};
-use config::{Config, OidcConfig};
+pub use config::{Config, OidcConfig};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::future::Future;
@@ -82,14 +82,8 @@ impl TestApp {
             .await
     }
 
-    pub async fn app_update(
-        &self,
-        oidc_client_id: Option<&str>,
-        oidc_provider: Option<&str>,
-    ) -> Result<(), Error> {
-        self.admin
-            .app_update(&self.app.id, oidc_client_id, oidc_provider)
-            .await
+    pub async fn app_update(&self, oidc_provider: &OidcConfig) -> Result<(), Error> {
+        self.admin.app_update(&self.app.id, oidc_provider).await
     }
 
     pub fn create_identity(&self, email: Option<String>) -> String {
