@@ -15,7 +15,10 @@ pub enum VerificationMethod {
     Passphrase,
     VerificationKey,
     #[allow(clippy::upper_case_acronyms)]
-    OIDCIDToken,
+    OIDCIDToken {
+        provider_id: String,
+        provider_display_name: String,
+    },
     PhoneNumber(String),
     PreverifiedEmail(String),
     PreverifiedPhoneNumber(String),
@@ -46,28 +49,38 @@ impl VerificationMethod {
         match ctype.into() {
             CMethodType::Email => {
                 // SAFETY: If we get a valid Email verification method, the email is a valid string
-                let c_email = unsafe { CStr::from_ptr(method.value) };
+                let c_email = unsafe { CStr::from_ptr(method.value1) };
                 let email = c_email.to_str().unwrap().into();
                 Ok(VerificationMethod::Email(email))
             }
             CMethodType::Passphrase => Ok(VerificationMethod::Passphrase),
             CMethodType::VerificationKey => Ok(VerificationMethod::VerificationKey),
-            CMethodType::OIDCIDToken => Ok(VerificationMethod::OIDCIDToken),
+            CMethodType::OIDCIDToken => {
+                // SAFETY: If we get a valid OIDC verification method, the values are valid strings
+                let c_prov_id = unsafe { CStr::from_ptr(method.value1) };
+                let provider_id = c_prov_id.to_str().unwrap().into();
+                let c_prov_name = unsafe { CStr::from_ptr(method.value2) };
+                let provider_display_name = c_prov_name.to_str().unwrap().into();
+                Ok(VerificationMethod::OIDCIDToken {
+                    provider_id,
+                    provider_display_name,
+                })
+            }
             CMethodType::PhoneNumber => {
                 // SAFETY: If we get a valid PhoneNumber verification method, the number is a valid string
-                let c_phone_number = unsafe { CStr::from_ptr(method.value) };
+                let c_phone_number = unsafe { CStr::from_ptr(method.value1) };
                 let phone_number = c_phone_number.to_str().unwrap().into();
                 Ok(VerificationMethod::PhoneNumber(phone_number))
             }
             CMethodType::PreverifiedEmail => {
                 // SAFETY: If we get a valid Email verification method, the email is a valid string
-                let c_preverified_email = unsafe { CStr::from_ptr(method.value) };
+                let c_preverified_email = unsafe { CStr::from_ptr(method.value1) };
                 let preverified_email = c_preverified_email.to_str().unwrap().into();
                 Ok(VerificationMethod::PreverifiedEmail(preverified_email))
             }
             CMethodType::PreverifiedPhoneNumber => {
                 // SAFETY: If we get a valid PhoneNumber verification method, the number is a valid string
-                let c_preverified_phone_number = unsafe { CStr::from_ptr(method.value) };
+                let c_preverified_phone_number = unsafe { CStr::from_ptr(method.value1) };
                 let preverified_phone_number = c_preverified_phone_number.to_str().unwrap().into();
                 Ok(VerificationMethod::PreverifiedPhoneNumber(
                     preverified_phone_number,
