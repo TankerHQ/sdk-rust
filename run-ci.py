@@ -81,7 +81,7 @@ def get_android_bin_path() -> Path:
     tankerci.run(
         "conan",
         "install",
-        "android-ndk/r25c@",
+        "android-ndk/r26@",
         "--profile:host",
         "linux-x86_64",
         "--profile:build",
@@ -90,7 +90,7 @@ def get_android_bin_path() -> Path:
     _, out = tankerci.run_captured(
         "conan",
         "info",
-        "android-ndk/r25c@",
+        "android-ndk/r26@",
         "--profile",
         "linux-x86_64",
         "--profile:build",
@@ -277,7 +277,7 @@ class Builder:
                 # However, we can't pull in all of rt.builtins, or we will have duplicate symbols and fail linking
                 if self.arch in ['x86_64', 'armv8']:
                     compiler_rt_arch = CLANG_RT_ARCH_TARGETS[self.arch]
-                    compiler_rt_dir = android_bin_path / f"../lib64/clang/14.0.7/lib/linux/"
+                    compiler_rt_dir = android_bin_path / f"../lib/clang/17/lib/linux/"
                     compiler_rt_lib = compiler_rt_dir / f"libclang_rt.builtins-{compiler_rt_arch}.a"
                     out_path = cxx_package_libs / f"libclang_rt.builtins.float128-{compiler_rt_arch}.a"
                     self._armerge_soft_float128_compiler_rt_builtins(compiler_rt_lib, out_path, env)
