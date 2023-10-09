@@ -5,7 +5,6 @@ use axum::handler::Handler;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use identity::TestApp;
-use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,16 +13,16 @@ use tokio::spawn;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-async fn spawn_test_http_server(svc: impl Handler<(), Body> + Clone + Send + 'static) -> u16 {
+async fn spawn_test_http_server<T>(svc: impl Handler<T, (), Body> + Clone + Send + 'static) -> u16 {
     let handler_thunk = |req: Request<Body>| async {
-        svc.call(req).await;
+        svc.call(req, ()).await;
         (
             StatusCode::NOT_FOUND,
             "Test HTTP server cannot handle real requests".to_string(),
         )
     };
 
-    let app = Router::new().fallback(handler_thunk.into_service());
+    let app = Router::new().fallback(handler_thunk);
     let addr = SocketAddr::from(([127, 0, 0, 1], 0));
     let server = axum::Server::bind(&addr).serve(app.into_make_service());
     let addr = server.local_addr();
@@ -64,16 +63,19 @@ async fn simple_http_request() -> Result<(), Error> {
 }
 
 // We test Core with async-std, but our tests still need a tokio runtime (admin API & axum server)
+#[cfg(feature = "http")]
 #[tokio::main(flavor = "multi_thread")]
 async fn run_in_tokio<F, T>(cb: impl FnOnce() -> F) -> T
 where
-    F: Future<Output = T>,
+    F: std::future::Future<Output = T>,
 {
     cb().await
 }
 
 // Our http client needs a tokio runtime, but if our users are using async-std (some are!),
 // we need to make sure we start our own runtime correctly and don't just panic
+// Note: We don't test this without http, as the builtin sdk-native http would block
+#[cfg(feature = "http")]
 #[async_std::test]
 async fn async_std_http_request() -> Result<(), Error> {
     let (wait_tx, mut wait_rx) = tokio::sync::mpsc::channel(1);

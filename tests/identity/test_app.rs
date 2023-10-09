@@ -89,7 +89,8 @@ impl TestApp {
     pub fn create_identity(&self, email: Option<String>) -> String {
         let user_id = email.unwrap_or_else(|| {
             rand::thread_rng()
-                .sample_iter(&Alphanumeric)
+                .sample_iter(Alphanumeric)
+                .map(char::from)
                 .take(30)
                 .collect()
         });

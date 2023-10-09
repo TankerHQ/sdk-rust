@@ -67,6 +67,7 @@ use crate::{
     SharingOptions, Status, VerificationMethod, VerificationOptions,
 };
 use lazy_static::lazy_static;
+use num_enum::UnsafeFromPrimitive;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::os::raw::c_char;
@@ -291,7 +292,7 @@ impl CTankerLib {
     pub unsafe fn status(&self, ctanker: CTankerPtr) -> Status {
         let status = unsafe { tanker_call!(self, tanker_status(ctanker.0)) };
         // SAFETY: The native lib never returns invalid status codes
-        unsafe { Status::from_unchecked(status as u32) }
+        unsafe { Status::unchecked_transmute_from(status as u32) }
     }
 
     pub async unsafe fn start(&self, ctanker: CTankerPtr, identity: &str) -> Result<Status, Error> {
@@ -309,7 +310,7 @@ impl CTankerLib {
         };
         fut.await.map(|status_voidptr| {
             // SAFETY: The native lib never returns invalid status codes
-            unsafe { Status::from_unchecked(status_voidptr) }
+            unsafe { Status::unchecked_transmute_from(status_voidptr) }
         })
     }
 
@@ -577,7 +578,7 @@ impl CTankerLib {
             Some(VerificationMethod::try_from(cmethod)?)
         };
         let result = AttachResult {
-            status: unsafe { Status::from_unchecked(cresult.status as u32) },
+            status: unsafe { Status::unchecked_transmute_from(cresult.status as u32) },
             verification_method,
         };
 
