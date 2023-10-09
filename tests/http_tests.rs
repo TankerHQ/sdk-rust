@@ -14,16 +14,16 @@ use tokio::spawn;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-async fn spawn_test_http_server(svc: impl Handler<(), Body> + Clone + Send + 'static) -> u16 {
+async fn spawn_test_http_server<T>(svc: impl Handler<T, (), Body> + Clone + Send + 'static) -> u16 {
     let handler_thunk = |req: Request<Body>| async {
-        svc.call(req).await;
+        svc.call(req, ()).await;
         (
             StatusCode::NOT_FOUND,
             "Test HTTP server cannot handle real requests".to_string(),
         )
     };
 
-    let app = Router::new().fallback(handler_thunk.into_service());
+    let app = Router::new().fallback(handler_thunk);
     let addr = SocketAddr::from(([127, 0, 0, 1], 0));
     let server = axum::Server::bind(&addr).serve(app.into_make_service());
     let addr = server.local_addr();

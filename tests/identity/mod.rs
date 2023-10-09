@@ -10,7 +10,7 @@ pub use test_app::TestApp;
 
 use blake2::digest::{consts, VariableOutput};
 use blake2::{Blake2b, Blake2bVar};
-use ed25519_dalek::{Keypair, Signer};
+use ed25519_dalek::{Signer, SigningKey};
 use rand::{rngs::OsRng, Rng};
 use serde_json::{json, Value};
 use tankersdk::{Error, ErrorCode};
@@ -75,11 +75,12 @@ pub fn create_identity(
         return Err(invalid_arg);
     }
 
-    let app_secret_keypair = Keypair::from_bytes(&app_secret).unwrap();
+    let app_secret_keypair =
+        SigningKey::from_keypair_bytes(&app_secret.try_into().unwrap()).unwrap();
 
     let hashed_user_id = hash_user_id(&app_id, user_id);
-    let sign_keypair = Keypair::generate(&mut OsRng {});
-    let mut message = sign_keypair.public.to_bytes().to_vec();
+    let sign_keypair = SigningKey::generate(&mut OsRng {});
+    let mut message = sign_keypair.verifying_key().to_bytes().to_vec();
     message.extend(&hashed_user_id);
     let signature = app_secret_keypair.sign(&message).to_bytes();
     let user_secret = generate_user_secret(&hashed_user_id);
@@ -89,8 +90,8 @@ pub fn create_identity(
         "target": "user",
         "value": base64::encode(&hashed_user_id),
         "delegation_signature": base64::encode(signature.as_ref()),
-        "ephemeral_public_signature_key": base64::encode(sign_keypair.public),
-        "ephemeral_private_signature_key": base64::encode(sign_keypair.to_bytes().as_ref()),
+        "ephemeral_public_signature_key": base64::encode(sign_keypair.verifying_key()),
+        "ephemeral_private_signature_key": base64::encode(sign_keypair.to_keypair_bytes().as_ref()),
         "user_secret": base64::encode(user_secret),
     });
 
@@ -108,8 +109,8 @@ pub fn create_provisional_identity(b64_app_id: &str, email: &str) -> Result<Stri
         return Err(invalid_arg);
     }
 
-    let sign_keypair = Keypair::generate(&mut OsRng {});
-    let encrypt_sk = x25519_dalek::StaticSecret::new(OsRng);
+    let sign_keypair = SigningKey::generate(&mut OsRng {});
+    let encrypt_sk = x25519_dalek::StaticSecret::random_from_rng(OsRng);
     let encrypt_pk = x25519_dalek::PublicKey::from(&encrypt_sk);
 
     let json = json!({
@@ -118,8 +119,8 @@ pub fn create_provisional_identity(b64_app_id: &str, email: &str) -> Result<Stri
         "value": email,
         "public_encryption_key": base64::encode(encrypt_pk.as_bytes()),
         "private_encryption_key": base64::encode(encrypt_sk.to_bytes()),
-        "public_signature_key": base64::encode(sign_keypair.public),
-        "private_signature_key": base64::encode(sign_keypair.to_bytes().as_ref()),
+        "public_signature_key": base64::encode(sign_keypair.verifying_key()),
+        "private_signature_key": base64::encode(sign_keypair.to_keypair_bytes().as_ref()),
     });
 
     Ok(base64::encode(json.to_string()))
