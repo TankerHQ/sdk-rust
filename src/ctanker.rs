@@ -28,7 +28,6 @@ mod cstream;
 
 pub use cstream::*;
 
-pub use self::bindings::tanker_future;
 use self::bindings::*;
 
 pub type CVerification = tanker_verification;
