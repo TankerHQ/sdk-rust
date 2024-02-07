@@ -5,15 +5,17 @@ use axum::handler::Handler;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use identity::TestApp;
+use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tankersdk::*;
+use tokio::net::TcpListener;
 use tokio::spawn;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-async fn spawn_test_http_server<T>(svc: impl Handler<T, (), Body> + Clone + Send + 'static) -> u16 {
+async fn spawn_test_http_server<T>(svc: impl Handler<T, ()> + Clone + Send + 'static) -> u16 {
     let handler_thunk = |req: Request<Body>| async {
         svc.call(req, ()).await;
         (
@@ -24,10 +26,11 @@ async fn spawn_test_http_server<T>(svc: impl Handler<T, (), Body> + Clone + Send
 
     let app = Router::new().fallback(handler_thunk);
     let addr = SocketAddr::from(([127, 0, 0, 1], 0));
-    let server = axum::Server::bind(&addr).serve(app.into_make_service());
-    let addr = server.local_addr();
-    std::mem::drop(spawn(server));
-    addr.port()
+    let listener = TcpListener::bind(addr).await.unwrap();
+    let local_addr = listener.local_addr().unwrap();
+    let server = axum::serve(listener, app).into_future();
+    drop(spawn(server));
+    local_addr.port()
 }
 
 #[tokio::test(flavor = "multi_thread")]
