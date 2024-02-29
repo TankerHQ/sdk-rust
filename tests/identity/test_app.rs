@@ -4,6 +4,7 @@ mod config;
 
 use super::Admin;
 use super::App;
+use super::OIDCProvider;
 use crate::identity::{create_identity, create_provisional_identity, get_public_identity};
 pub use config::{Config, OidcConfig};
 use rand::distributions::Alphanumeric;
@@ -82,7 +83,10 @@ impl TestApp {
             .await
     }
 
-    pub async fn app_update(&self, oidc_provider: &OidcConfig) -> Result<(), Error> {
+    pub async fn app_update(
+        &self,
+        oidc_provider: &OidcConfig,
+    ) -> Result<OIDCProvider, Box<dyn std::error::Error>> {
         self.admin.app_update(&self.app.id, oidc_provider).await
     }
 

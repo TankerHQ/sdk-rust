@@ -1,5 +1,6 @@
 mod identity;
 
+use crate::identity::{extract_subject, get_id_token};
 use identity::TestApp;
 use serde_json::{json, Value};
 use tankersdk::*;
@@ -172,24 +173,11 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     let martine_identity = app.create_identity(Some(martine_config.email.clone()));
 
     app.app_update(oidc).await?;
-
-    let client = reqwest::Client::new();
-    let response = client
-        .post("https://www.googleapis.com/oauth2/v4/token")
-        .json(&json!({
-            "grant_type": "refresh_token",
-            "refresh_token": &martine_config.refresh_token,
-            "client_id": &oidc.client_id,
-            "client_secret": &oidc.client_secret,
-        }))
-        .send()
-        .await?;
-    let reply: Value = response.json().await?;
-    let oidc_token = reply["id_token"].as_str().unwrap();
+    let oidc_token = get_id_token(oidc).await?;
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
-    let verif = Verification::OIDCIDToken(oidc_token.to_owned());
+    let verif = Verification::OIDCIDToken(oidc_token);
 
     let nonce = tanker.create_oidc_nonce().await?;
     tanker.set_oidc_test_nonce(&nonce).await?;
@@ -423,6 +411,35 @@ async fn register_fail_with_preverified_phone_number() -> Result<(), Error> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn register_fail_with_preverified_oidc() -> Result<(), Box<dyn std::error::Error>> {
+    let app = TestApp::get().await;
+    let oidc = app.get_oidc_config();
+    let oidc_provider = app.app_update(oidc).await?;
+    let id_token = get_id_token(oidc).await?;
+    let subject = extract_subject(&id_token)?;
+
+    let id = &app.create_identity(None);
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+
+    let verif = Verification::PreverifiedOIDC {
+        subject,
+        provider_id: oidc_provider.id,
+    };
+
+    let err = tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn verify_identity_fail_with_preverified_email() -> Result<(), Error> {
     let app = TestApp::get().await;
     let id = &app.create_identity(None);
@@ -484,6 +501,45 @@ async fn verify_identity_fail_with_preverified_phone_number() -> Result<(), Erro
     assert_eq!(err.code(), ErrorCode::InvalidArgument);
 
     tanker.stop().await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn verify_identity_fail_with_preverified_oidc() -> Result<(), Box<dyn std::error::Error>> {
+    let app = TestApp::get().await;
+    let oidc = app.get_oidc_config();
+    let oidc_provider = app.app_update(oidc).await?;
+    let id_token = get_id_token(oidc).await?;
+    let subject = extract_subject(&id_token)?;
+
+    let id = &app.create_identity(None);
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+    let nonce = tanker.create_oidc_nonce().await?;
+    tanker.set_oidc_test_nonce(&nonce).await?;
+
+    let verif = Verification::OIDCIDToken(id_token);
+    tanker
+        .register_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityVerificationNeeded);
+    let verif = Verification::PreverifiedOIDC {
+        subject,
+        provider_id: oidc_provider.id,
+    };
+    let err = tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidArgument);
+
+    tanker.stop().await?;
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -588,6 +644,60 @@ async fn set_verification_method_with_preverified_phone_number() -> Result<(), E
             VerificationMethod::Passphrase
         ]
     );
+
+    tanker.stop().await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn set_verification_method_with_preverified_oidc() -> Result<(), Box<dyn std::error::Error>> {
+    let app = TestApp::get().await;
+    let oidc = app.get_oidc_config();
+    let oidc_provider = app.app_update(oidc).await?;
+    let id_token = get_id_token(oidc).await?;
+    let subject = extract_subject(&id_token)?;
+
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    let verif = Verification::PreverifiedOIDC {
+        subject,
+        provider_id: oidc_provider.id.clone(),
+    };
+    tanker
+        .set_verification_method(&verif, &VerificationOptions::new())
+        .await?;
+    let methods = tanker.get_verification_methods().await?;
+    assert_eq!(
+        *methods,
+        [
+            VerificationMethod::Passphrase,
+            VerificationMethod::OIDCIDToken {
+                provider_id: oidc_provider.id,
+                provider_display_name: oidc_provider.display_name
+            }
+        ]
+    );
+
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let nonce = tanker.create_oidc_nonce().await?;
+    tanker.set_oidc_test_nonce(&nonce).await?;
+    let verif = Verification::OIDCIDToken(id_token);
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
 
     tanker.stop().await?;
 

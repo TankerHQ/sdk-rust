@@ -3,6 +3,7 @@ mod rest;
 pub use rest::admin_rest_request;
 
 use super::App;
+use super::OIDCProvider;
 use crate::identity::test_app::OidcConfig;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde_json::json;
@@ -63,9 +64,13 @@ impl Admin {
         Ok(())
     }
 
-    pub async fn app_update(&self, id: &str, oidc_provider: &OidcConfig) -> Result<(), Error> {
+    pub async fn app_update(
+        &self,
+        id: &str,
+        oidc_provider: &OidcConfig,
+    ) -> Result<OIDCProvider, Box<dyn std::error::Error>> {
         let url = self.make_url(id);
-        admin_rest_request(self.client.patch(&url).json(&json!({
+        let reply = admin_rest_request(self.client.patch(&url).json(&json!({
             "oidc_providers": [
                 {
                     "issuer": oidc_provider.issuer.clone(),
@@ -75,7 +80,21 @@ impl Admin {
             ]
         })))
         .await?;
-        Ok(())
+        let invalid_response = "invalid response from the App Manangement API";
+
+        let json_oidc_provider = reply["app"]["oidc_providers"][0]
+            .as_object()
+            .ok_or(invalid_response)?;
+        Ok(OIDCProvider {
+            id: json_oidc_provider["id"]
+                .as_str()
+                .ok_or(invalid_response)?
+                .to_owned(),
+            display_name: json_oidc_provider["display_name"]
+                .as_str()
+                .ok_or(invalid_response)?
+                .to_owned(),
+        })
     }
 
     fn make_url(&self, id: &str) -> String {
