@@ -1,11 +1,13 @@
 use crate::ctanker::{
-    CEmailVerification, CPhoneNumberVerification, CVerification, CVerificationPtr,
+    CEmailVerification, CPhoneNumberVerification, CPreverifiedOIDCVerification, CVerification,
+    CVerificationPtr,
 };
 use std::ffi::CString;
 
-const CVERIFICATION_VERSION: u8 = 6;
+const CVERIFICATION_VERSION: u8 = 7;
 const CEMAIL_VERIFICATION_VERSION: u8 = 1;
 const CPHONE_NUMBER_VERIFICATION_VERSION: u8 = 1;
+const CPREVERIFIED_OIDC_VERIFICATION_VERSION: u8 = 1;
 
 #[repr(u8)]
 enum Type {
@@ -18,6 +20,7 @@ enum Type {
     PreverifiedEmail = 6,
     PreverifiedPhoneNumber = 7,
     E2ePassphrase = 8,
+    PreverifiedOIDC = 9,
 }
 
 pub(crate) struct CVerificationWrapper {
@@ -52,6 +55,11 @@ impl CVerificationWrapper {
                 preverified_email: std::ptr::null(),
                 preverified_phone_number: std::ptr::null(),
                 e2e_passphrase: std::ptr::null(),
+                preverified_oidc_verification: CPreverifiedOIDCVerification {
+                    version: CPREVERIFIED_OIDC_VERIFICATION_VERSION,
+                    subject: std::ptr::null(),
+                    provider_id: std::ptr::null(),
+                },
             },
         }
     }
@@ -150,6 +158,19 @@ impl CVerificationWrapper {
         wrapper
     }
 
+    pub(self) fn with_preverifed_oidc(subject: &str, provider_id: &str) -> Self {
+        let mut wrapper = Self::new();
+        let csubject = CString::new(subject).unwrap();
+        let cprovider_id = CString::new(provider_id).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::PreverifiedOIDC as u8;
+        wrapper.cverif.preverified_oidc_verification.subject = csubject.as_ptr();
+        wrapper.cverif.preverified_oidc_verification.provider_id = cprovider_id.as_ptr();
+
+        wrapper.cstrings = vec![csubject, cprovider_id];
+        wrapper
+    }
+
     pub fn as_cverification_ptr(&self) -> CVerificationPtr {
         CVerificationPtr(&self.cverif)
     }
@@ -173,6 +194,10 @@ pub enum Verification {
     PreverifiedEmail(String),
     PreverifiedPhoneNumber(String),
     E2ePassphrase(String),
+    PreverifiedOIDC {
+        subject: String,
+        provider_id: String,
+    },
 }
 
 impl Verification {
@@ -200,6 +225,10 @@ impl Verification {
             Verification::E2ePassphrase(e2e_passphrase) => {
                 CVerificationWrapper::with_e2e_passphrase(e2e_passphrase)
             }
+            Verification::PreverifiedOIDC {
+                subject,
+                provider_id,
+            } => CVerificationWrapper::with_preverifed_oidc(subject, provider_id),
         }
     }
 }

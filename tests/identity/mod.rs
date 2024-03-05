@@ -4,6 +4,11 @@ pub use app::App;
 mod admin;
 pub use admin::Admin;
 
+mod oidc;
+#[allow(unused_imports)]
+// This module is compiled per-test. Not all tests will use all functions!
+pub use oidc::{extract_subject, get_id_token, OIDCProvider};
+
 #[cfg(test)]
 mod test_app;
 pub use test_app::TestApp;

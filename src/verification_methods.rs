@@ -23,6 +23,7 @@ pub enum VerificationMethod {
     PreverifiedEmail(String),
     PreverifiedPhoneNumber(String),
     E2ePassphrase,
+    // PreverifiedOIDC is not exposed as a VerificationMethod
 }
 
 #[derive(FromPrimitive)]
@@ -38,7 +39,7 @@ enum CMethodType {
     PreverifiedEmail = 6,
     PreverifiedPhoneNumber = 7,
     E2ePassphrase = 8,
-
+    // PreverifiedOIDC = 9, PreverifiedOIDC is not exposed as a VerificationMethod
     #[num_enum(default)]
     Invalid,
 }
