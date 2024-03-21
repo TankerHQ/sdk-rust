@@ -41,10 +41,14 @@ pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
 pub type CHttpRequestHandle = *mut tanker_http_request_handle_t;
 
 #[derive(Debug)]
-#[cfg_attr(not(feature = "http"), allow(dead_code))]
+#[cfg(feature = "http")]
 pub struct CHttpRequest(pub(crate) *mut tanker_http_request_t);
 
+#[cfg(feature = "http")]
+pub type CHttpHeader = tanker_http_header;
+
 // SAFETY: ctanker is thread-safe
+#[cfg(feature = "http")]
 unsafe impl Send for CHttpRequest {}
 
 #[derive(Copy, Clone, Debug)]
@@ -144,7 +148,7 @@ unsafe extern "C" fn send_http_request(
     let client = unsafe { Arc::from_raw(client) };
 
     // SAFETY: We trust the request struct from native
-    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
+    let req = unsafe { crate::http::request::HttpRequest::new(CHttpRequest(creq_ptr)) };
     let req_handle = client.send_request(req);
 
     // NOTE: If/when strict provenance is stabilized, this should be a std::ptr::invalid()
@@ -168,7 +172,7 @@ unsafe extern "C" fn cancel_http_request(
     let client = unsafe { Arc::from_raw(client) };
 
     // SAFETY: We trust the request struct from native
-    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
+    let req = unsafe { crate::http::request::HttpRequest::new(CHttpRequest(creq_ptr)) };
     client.cancel_request(req, handle as usize);
 }
 
@@ -266,19 +270,25 @@ impl CTankerLib {
     pub unsafe fn http_handle_response(
         &self,
         request: CHttpRequest,
-        response: crate::http::HttpResponse,
+        response: crate::http::response::HttpResponse,
     ) {
+        let cheaders = response
+            .headers
+            .iter()
+            .map(|header| tanker_http_header_t {
+                name: header.name.as_ptr() as *const c_char,
+                value: header.value.as_ptr() as *const c_char,
+            })
+            .collect::<Vec<_>>();
+
         let mut cresponse = tanker_http_response_t {
             error_msg: response
                 .error_msg
                 .as_ref()
                 .map(|s| s.as_ptr())
                 .unwrap_or(std::ptr::null()),
-            content_type: response
-                .content_type
-                .as_ref()
-                .map(|s| s.as_ptr())
-                .unwrap_or(std::ptr::null()),
+            headers: cheaders.as_ptr() as *mut tanker_http_header_t,
+            num_headers: response.headers.len() as i32,
             body: response
                 .body
                 .as_ref()
@@ -287,6 +297,7 @@ impl CTankerLib {
             body_size: response.body.as_ref().map(|v| v.len()).unwrap_or(0) as i64,
             status_code: response.status_code as i32,
         };
+
         unsafe { tanker_call!(self, tanker_http_handle_response(request.0, &mut cresponse)) };
     }
 
