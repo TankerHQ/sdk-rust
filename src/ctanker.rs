@@ -33,6 +33,7 @@ use self::bindings::*;
 pub type CVerification = tanker_verification;
 pub type CEmailVerification = tanker_email_verification;
 pub type CPhoneNumberVerification = tanker_phone_number_verification;
+pub type COIDCAuthorizationCodeVerification = tanker_oidc_authorization_code_verification;
 pub type CVerificationMethod = tanker_verification_method;
 pub type CPreverifiedOIDCVerification = tanker_preverified_oidc_verification;
 pub type CEncSessPtr = *mut tanker_encryption_session_t;
