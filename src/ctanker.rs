@@ -565,6 +565,34 @@ impl CTankerLib {
         fut.await
     }
 
+    #[cfg(feature = "experimental-oidc")]
+    pub async unsafe fn authenticate_with_idp(
+        &self,
+        ctanker: CTankerPtr,
+        provider_id: &CStr,
+        cookie: &CStr,
+    ) -> Result<crate::Verification, Error> {
+        let fut = unsafe {
+            CFuture::<*mut tanker_oidc_authorization_code_verification>::new(tanker_call!(
+                self,
+                tanker_authenticate_with_idp(ctanker.0, provider_id.as_ptr(), cookie.as_ptr(),)
+            ))
+        };
+        let cresult: &mut tanker_oidc_authorization_code_verification = unsafe { &mut *fut.await? };
+
+        // SAFETY: If we get a valid OIDCAuthorizationCode verification method, every field is a valid string
+        let c_authorization_code = unsafe { CStr::from_ptr(cresult.authorization_code) };
+        let authorization_code = c_authorization_code.to_str().unwrap().into();
+        let c_state = unsafe { CStr::from_ptr(cresult.state) };
+        let state = c_state.to_str().unwrap().into();
+
+        Ok(crate::Verification::OIDCAuthorizationCode {
+            provider_id: provider_id.to_str().unwrap().into(),
+            authorization_code,
+            state,
+        })
+    }
+
     pub async unsafe fn encryption_session_open(
         &self,
         ctanker: CTankerPtr,

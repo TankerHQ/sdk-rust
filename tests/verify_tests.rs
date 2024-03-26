@@ -200,6 +200,44 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[cfg(feature = "experimental-oidc")]
+async fn unlock_with_oidc_authorization_code() -> Result<(), Box<dyn std::error::Error>> {
+    let app = TestApp::get().await;
+    let mut oidc = app.get_oidc_config().to_owned();
+    oidc.issuer = oidc.fake_oidc_issuer_url.to_owned();
+    oidc.client_id = "tanker".to_owned();
+    oidc.provider_name = "fake-oidc".to_owned();
+    let oidc_provider = app.app_update(&oidc).await?;
+    let id = &app.create_identity(None);
+    let subject_cookie = "fake_oidc_subject=martine";
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+
+    let verif1 = tanker
+        .authenticate_with_idp(&oidc_provider.id, subject_cookie)
+        .await?;
+    let verif2 = tanker
+        .authenticate_with_idp(&oidc_provider.id, subject_cookie)
+        .await?;
+
+    tanker
+        .register_identity(&verif1, &VerificationOptions::new())
+        .await?;
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    assert_eq!(tanker.status(), Status::IdentityVerificationNeeded);
+    tanker
+        .verify_identity(&verif2, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+    tanker.stop().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn get_session_token_with_register_identity() -> Result<(), Error> {
     let app = TestApp::get().await;
 
@@ -699,6 +737,75 @@ async fn set_verification_method_with_preverified_oidc() -> Result<(), Box<dyn s
         .await?;
     assert_eq!(tanker.status(), Status::Ready);
 
+    tanker.stop().await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg(feature = "experimental-oidc")]
+async fn set_verification_method_with_oidc_authorization_code(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = TestApp::get().await;
+    let mut oidc = app.get_oidc_config().to_owned();
+    oidc.issuer = oidc.fake_oidc_issuer_url.to_owned();
+    oidc.client_id = "tanker".to_owned();
+    oidc.provider_name = "fake-oidc".to_owned();
+    let subject_cookie = "fake_oidc_subject=martine";
+    let oidc_provider = app.app_update(&oidc).await?;
+    let id = &app.create_identity(None);
+    let pass = Verification::Passphrase("The Beauty In The Ordinary".into());
+
+    let tanker = Core::new(app.make_options()).await?;
+    assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+    tanker
+        .register_identity(&pass, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    let verif = tanker
+        .authenticate_with_idp(&oidc_provider.id, subject_cookie)
+        .await?;
+    tanker
+        .set_verification_method(&verif, &VerificationOptions::new())
+        .await?;
+    let methods = tanker.get_verification_methods().await?;
+    assert_eq!(
+        methods,
+        &[
+            VerificationMethod::Passphrase,
+            VerificationMethod::OIDCIDToken {
+                provider_id: oidc_provider.id.clone(),
+                provider_display_name: oidc_provider.display_name
+            }
+        ]
+    );
+
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let verif = tanker
+        .authenticate_with_idp(&oidc_provider.id, subject_cookie)
+        .await?;
+    tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await?;
+    assert_eq!(tanker.status(), Status::Ready);
+
+    tanker.stop().await?;
+
+    let tanker = Core::new(app.make_options()).await?;
+    tanker.start(id).await?;
+    let verif = tanker
+        .authenticate_with_idp(&oidc_provider.id, "fake_oidc_subject=not-martine")
+        .await?;
+    let err = tanker
+        .verify_identity(&verif, &VerificationOptions::new())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code(), ErrorCode::InvalidVerification);
     tanker.stop().await?;
 
     Ok(())

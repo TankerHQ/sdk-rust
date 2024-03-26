@@ -1,7 +1,7 @@
 use super::response::{HttpResponse, HttpResponseHeader};
 use crate::ctanker::{CTankerLib, RUST_SDK_TYPE, RUST_SDK_VERSION};
 use crate::http::{request::HttpRequest, HttpRequestId};
-use reqwest::{Client, Method, Request, Response};
+use reqwest::{redirect::Policy, Client, Method, Request, Response};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -34,7 +34,7 @@ impl HttpClient {
         };
 
         Self {
-            client: Client::new(),
+            client: Client::builder().redirect(Policy::none()).build().unwrap(),
             sdk_type: sdk_type.unwrap_or(RUST_SDK_TYPE).to_string(),
             next_id: 0.into(),
             _runtime: runtime,
@@ -60,6 +60,7 @@ impl HttpClient {
             .client
             .request(method, native_req.url)
             .body(native_req.body);
+
         for header in &native_req.headers {
             req_builder = req_builder.header(header.name, header.value);
         }

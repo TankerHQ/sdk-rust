@@ -368,6 +368,21 @@ impl Core {
     pub fn prehash_password(password: &str) -> Result<String, Error> {
         block_on(CTankerLib::get().prehash_password(password))
     }
+
+    #[cfg(feature = "experimental-oidc")]
+    pub async fn authenticate_with_idp(
+        &self,
+        provider_id: &str,
+        cookie: &str,
+    ) -> Result<Verification, Error> {
+        let provider_id = CString::new(provider_id).unwrap();
+        let cookie = CString::new(cookie).unwrap();
+        Ok(unsafe {
+            CTankerLib::get()
+                .authenticate_with_idp(self.ctanker, provider_id.as_ref(), cookie.as_ref())
+                .await?
+        })
+    }
 }
 
 impl Drop for Core {
