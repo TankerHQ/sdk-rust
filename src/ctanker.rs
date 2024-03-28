@@ -586,6 +586,8 @@ impl CTankerLib {
         let c_state = unsafe { CStr::from_ptr(cresult.state) };
         let state = c_state.to_str().unwrap().into();
 
+        unsafe { tanker_call!(self, tanker_free_authenticate_with_idp_result(cresult)) }
+
         Ok(crate::Verification::OIDCAuthorizationCode {
             provider_id: provider_id.to_str().unwrap().into(),
             authorization_code,
