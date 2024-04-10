@@ -957,13 +957,13 @@ widechars = ["wcwidth"]
 
 [[package]]
 name = "tankerci"
-version = "2024.4.dev5181"
+version = "2024.4.5183"
 description = "Tanker CI library"
 optional = false
 python-versions = ">=3.12,<4.0"
 files = [
-    {file = "tankerci-2024.4.dev5181-py3-none-any.whl", hash = "sha256:53fdf8f95916f198a701118b3d014a65595a0ae873132e58836b1e1177f19885"},
-    {file = "tankerci-2024.4.dev5181.tar.gz", hash = "sha256:9c358746e018a1e7e1c93447907c897c76a1231d0e14f802dc211da42b4575f0"},
+    {file = "tankerci-2024.4.5183-py3-none-any.whl", hash = "sha256:ff0903bacab9cb4435a51c6ba341817394a2f1215ff596fe6558a513c6484c07"},
+    {file = "tankerci-2024.4.5183.tar.gz", hash = "sha256:1afa60f06e5e30ecdfa18b0589658ccb2b43ab8ca953840e00311b770c77eba9"},
 ]
 
 [package.dependencies]
@@ -1072,4 +1072,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "1c976f3a1453e5e382504f0a9edf2fdeb7b84efbc984baf6f0745b8ed4cc98b1"
+content-hash = "3be5030beac9163ecd0b7bf8f21beddad1daf47f28f2846aa527f5dc95b59dbd"
