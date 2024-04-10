@@ -110,11 +110,8 @@ def get_android_bin_path() -> Path:
 
 
 def bind_gen(
-    *, header_source: Path, output_file: Path, include_path: Path, dynamic_loading: bool
+        *, header_source: Path, output_file: Path, include_path: Path, dynamic_loading: bool
 ) -> None:
-    # bindgen will call clang, which needs vcvarsall to be set
-    # otherwise, it will fail to find stdbool.h
-    tankerci.cpp.set_build_env()
     args = []
     if dynamic_loading:
         args += [
@@ -136,7 +133,7 @@ def bind_gen(
 
 class Builder:
     def __init__(
-        self, *, src_path: Path, build_profile: Profile, host_profile: Profile
+            self, *, src_path: Path, build_profile: Profile, host_profile: Profile
     ):
         self.src_path = src_path
         self.host_profile = host_profile
@@ -192,47 +189,47 @@ class Builder:
     @staticmethod
     def _armerge_soft_float128_compiler_rt_builtins(compiler_rt_lib: Path, output_path: Path, env: dict[str, str]):
         f128_builtins = [
-                "__addtf3",
-                "__subtf3",
-                "__multf3",
-                "__divtf3",
-                "__negtf2",
-                "__extenddftf2",
-                "__extendsftf2",
-                "__trunctfdf2",
-                "__trunctfsf2",
-                "__fixdfti",
-                "__fixsfti",
-                "__fixunsdfti",
-                "__fixunssfti",
-                "__fixtfdi",
-                "__fixtfsi",
-                "__fixtfti",
-                "__fixunstfdi",
-                "__fixunstfsi",
-                "__fixunstfti",
-                "__floattidf",
-                "__floattisf",
-                "__floatuntidf",
-                "__floatuntisf",
-                "__floatditf",
-                "__floatsitf",
-                "__floattitf",
-                "__floatunditf",
-                "__floatunsitf",
-                "__floatuntitf",
-                "__cmptf2",
-                "__unordtf2",
-                "__eqtf2",
-                "__getf2",
-                "__gttf2",
-                "__letf2",
-                "__lttf2",
-                "__netf2",
-                "__powitf2",
-                "__multc3",
-                "__divtc3",
-                ]
+            "__addtf3",
+            "__subtf3",
+            "__multf3",
+            "__divtf3",
+            "__negtf2",
+            "__extenddftf2",
+            "__extendsftf2",
+            "__trunctfdf2",
+            "__trunctfsf2",
+            "__fixdfti",
+            "__fixsfti",
+            "__fixunsdfti",
+            "__fixunssfti",
+            "__fixtfdi",
+            "__fixtfsi",
+            "__fixtfti",
+            "__fixunstfdi",
+            "__fixunstfsi",
+            "__fixunstfti",
+            "__floattidf",
+            "__floattisf",
+            "__floatuntidf",
+            "__floatuntisf",
+            "__floatditf",
+            "__floatsitf",
+            "__floattitf",
+            "__floatunditf",
+            "__floatunsitf",
+            "__floatuntitf",
+            "__cmptf2",
+            "__unordtf2",
+            "__eqtf2",
+            "__getf2",
+            "__gttf2",
+            "__letf2",
+            "__lttf2",
+            "__netf2",
+            "__powitf2",
+            "__multc3",
+            "__divtc3",
+        ]
         keep_symbol_args = [e for sym_name in f128_builtins for e in ['-k', sym_name]]
 
         tankerci.run(
@@ -246,7 +243,7 @@ class Builder:
         )
 
     def _merge_all_libs(
-        self, depsConfig: DepsConfig, package_path: Path, native_path: Path
+            self, depsConfig: DepsConfig, package_path: Path, native_path: Path
     ) -> None:
         with tankerci.working_directory(package_path):
             env = os.environ.copy()
@@ -377,10 +374,10 @@ class Builder:
             shutil.copyfile(native_path / "ctanker.rs", mingw_path / "ctanker.rs")
 
     def prepare(
-        self,
-        update: bool,
-        tanker_source: TankerSource,
-        tanker_ref: Optional[str] = None,
+            self,
+            update: bool,
+            tanker_source: TankerSource,
+            tanker_ref: Optional[str] = None,
     ) -> None:
         tanker_deployed_ref = tanker_ref
         if tanker_source == TankerSource.DEPLOYED and not tanker_ref:
@@ -472,11 +469,11 @@ class Builder:
 
 
 def prepare(
-    tanker_source: TankerSource,
-    *,
-    profiles: List[Profile],
-    update: bool = False,
-    tanker_ref: Optional[str] = None,
+        tanker_source: TankerSource,
+        *,
+        profiles: List[Profile],
+        update: bool = False,
+        tanker_ref: Optional[str] = None,
 ) -> None:
     build_profile = tankerci.conan.get_build_profile()
     for host_profile in profiles:
@@ -487,9 +484,9 @@ def prepare(
 
 
 def build(
-    *,
-    profiles: List[Profile],
-    test: bool = False,
+        *,
+        profiles: List[Profile],
+        test: bool = False,
 ) -> None:
     build_profile = tankerci.conan.get_build_profile()
     if os.environ.get("CI"):
@@ -594,7 +591,7 @@ def main() -> None:
     if args.command == "build":
         profiles = [Profile(p) for p in args.profiles]
         with tankerci.conan.ConanContextManager(
-            [args.remote, "conancenter"], conan_home=user_home
+                [args.remote, "conancenter"], conan_home=user_home
         ):
             build(
                 profiles=profiles,
@@ -604,7 +601,7 @@ def main() -> None:
         deploy(args)
     elif args.command == "prepare":
         with tankerci.conan.ConanContextManager(
-            [args.remote, "conancenter"], conan_home=user_home
+                [args.remote, "conancenter"], conan_home=user_home
         ):
             profiles = [Profile(p) for p in args.profiles]
             prepare(
