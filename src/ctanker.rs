@@ -41,6 +41,7 @@ pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
 pub type CHttpRequestHandle = *mut tanker_http_request_handle_t;
 
 #[derive(Debug)]
+#[cfg_attr(not(feature = "http"), allow(dead_code))]
 pub struct CHttpRequest(pub(crate) *mut tanker_http_request_t);
 
 // SAFETY: ctanker is thread-safe
