@@ -1,13 +1,14 @@
 use crate::ctanker::{
-    CEmailVerification, CPhoneNumberVerification, CPreverifiedOIDCVerification, CVerification,
-    CVerificationPtr,
+    CEmailVerification, COIDCAuthorizationCodeVerification, CPhoneNumberVerification,
+    CPreverifiedOIDCVerification, CVerification, CVerificationPtr,
 };
 use std::ffi::CString;
 
-const CVERIFICATION_VERSION: u8 = 7;
+const CVERIFICATION_VERSION: u8 = 8;
 const CEMAIL_VERIFICATION_VERSION: u8 = 1;
 const CPHONE_NUMBER_VERIFICATION_VERSION: u8 = 1;
 const CPREVERIFIED_OIDC_VERIFICATION_VERSION: u8 = 1;
+const COIDC_AUTORIZATION_CODE_VERIFICATION_VERSION: u8 = 1;
 
 #[repr(u8)]
 enum Type {
@@ -21,6 +22,7 @@ enum Type {
     PreverifiedPhoneNumber = 7,
     E2ePassphrase = 8,
     PreverifiedOIDC = 9,
+    OIDCAuthorizationCode = 10,
 }
 
 pub(crate) struct CVerificationWrapper {
@@ -59,6 +61,12 @@ impl CVerificationWrapper {
                     version: CPREVERIFIED_OIDC_VERIFICATION_VERSION,
                     subject: std::ptr::null(),
                     provider_id: std::ptr::null(),
+                },
+                oidc_authorization_code_verification: COIDCAuthorizationCodeVerification {
+                    version: COIDC_AUTORIZATION_CODE_VERIFICATION_VERSION,
+                    provider_id: std::ptr::null(),
+                    authorization_code: std::ptr::null(),
+                    state: std::ptr::null(),
                 },
             },
         }
@@ -171,6 +179,31 @@ impl CVerificationWrapper {
         wrapper
     }
 
+    pub(self) fn with_oidc_authorization_code(
+        provider_id: &str,
+        authorization_code: &str,
+        state: &str,
+    ) -> Self {
+        let mut wrapper = Self::new();
+        let cprovider_id = CString::new(provider_id).unwrap();
+        let cauthorization_code = CString::new(authorization_code).unwrap();
+        let cstate = CString::new(state).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::OIDCAuthorizationCode as u8;
+        wrapper
+            .cverif
+            .oidc_authorization_code_verification
+            .provider_id = cprovider_id.as_ptr();
+        wrapper
+            .cverif
+            .oidc_authorization_code_verification
+            .authorization_code = cauthorization_code.as_ptr();
+        wrapper.cverif.oidc_authorization_code_verification.state = cstate.as_ptr();
+
+        wrapper.cstrings = vec![cprovider_id, cauthorization_code, cstate];
+        wrapper
+    }
+
     pub fn as_cverification_ptr(&self) -> CVerificationPtr {
         CVerificationPtr(&self.cverif)
     }
@@ -197,6 +230,11 @@ pub enum Verification {
     PreverifiedOIDC {
         subject: String,
         provider_id: String,
+    },
+    OIDCAuthorizationCode {
+        provider_id: String,
+        authorization_code: String,
+        state: String,
     },
 }
 
@@ -229,6 +267,15 @@ impl Verification {
                 subject,
                 provider_id,
             } => CVerificationWrapper::with_preverifed_oidc(subject, provider_id),
+            Verification::OIDCAuthorizationCode {
+                provider_id,
+                authorization_code,
+                state,
+            } => CVerificationWrapper::with_oidc_authorization_code(
+                provider_id,
+                authorization_code,
+                state,
+            ),
         }
     }
 }

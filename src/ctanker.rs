@@ -20,32 +20,40 @@ macro_rules! tanker_call_ext {
 }
 
 mod cfuture;
-
 pub(crate) use cfuture::*;
-use std::marker::PhantomData;
+
+#[cfg(feature = "http")]
+pub mod chttp;
+#[cfg(feature = "http")]
+pub(crate) use chttp::*;
 
 mod cstream;
-
 pub use cstream::*;
+
+use crate::http::HttpClient;
+use crate::{
+    AttachResult, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options, Padding,
+    SharingOptions, Status, VerificationMethod, VerificationOptions,
+};
+use lazy_static::lazy_static;
+use num_enum::UnsafeFromPrimitive;
+use std::convert::TryFrom;
+use std::ffi::{c_void, CStr, CString};
+use std::marker::PhantomData;
+use std::os::raw::c_char;
+use std::ptr::NonNull;
+use std::sync::{Arc, Mutex, Once};
 
 use self::bindings::*;
 
 pub type CVerification = tanker_verification;
 pub type CEmailVerification = tanker_email_verification;
 pub type CPhoneNumberVerification = tanker_phone_number_verification;
+pub type COIDCAuthorizationCodeVerification = tanker_oidc_authorization_code_verification;
 pub type CVerificationMethod = tanker_verification_method;
 pub type CPreverifiedOIDCVerification = tanker_preverified_oidc_verification;
 pub type CEncSessPtr = *mut tanker_encryption_session_t;
 pub type LogHandlerCallback = Box<dyn Fn(LogRecord) + Send>;
-#[cfg(feature = "http")]
-pub type CHttpRequestHandle = *mut tanker_http_request_handle_t;
-
-#[derive(Debug)]
-#[cfg_attr(not(feature = "http"), allow(dead_code))]
-pub struct CHttpRequest(pub(crate) *mut tanker_http_request_t);
-
-// SAFETY: ctanker is thread-safe
-unsafe impl Send for CHttpRequest {}
 
 #[derive(Copy, Clone, Debug)]
 pub struct CTankerPtr(pub(crate) *mut tanker_t);
@@ -61,19 +69,6 @@ unsafe impl Send for CVerificationPtr {}
 
 // SAFETY: ctanker is thread-safe
 unsafe impl Send for tanker_http_options {}
-
-use crate::http::HttpClient;
-use crate::{
-    AttachResult, EncryptionOptions, Error, ErrorCode, LogRecord, LogRecordLevel, Options, Padding,
-    SharingOptions, Status, VerificationMethod, VerificationOptions,
-};
-use lazy_static::lazy_static;
-use num_enum::UnsafeFromPrimitive;
-use std::convert::TryFrom;
-use std::ffi::{c_void, CStr, CString};
-use std::os::raw::c_char;
-use std::ptr::NonNull;
-use std::sync::{Arc, Mutex, Once};
 
 pub(crate) static RUST_SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub(crate) static RUST_SDK_TYPE: &str = "client-rust";
@@ -128,50 +123,6 @@ unsafe extern "C" fn log_handler_thunk(clog: *const tanker_log_record) {
     callback(record);
 }
 
-#[cfg(feature = "http")]
-unsafe extern "C" fn send_http_request(
-    creq_ptr: *mut tanker_http_request,
-    data: *mut c_void,
-) -> CHttpRequestHandle {
-    let client = data as *const HttpClient;
-
-    // client is an Arc on the Rust side, but it's a raw pointer held by native, so Rust can't
-    // fully track its lifetime. Since Arc::drop will decrement the count, we must increment it
-    unsafe { Arc::increment_strong_count(client) };
-
-    // SAFETY: data is set to an Arc<HttpClient> in the tanker_options struct,
-    // and we trust native to not send requests after Core has been dropped
-    let client = unsafe { Arc::from_raw(client) };
-
-    // SAFETY: We trust the request struct from native
-    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
-    let req_handle = client.send_request(req);
-
-    // NOTE: If/when strict provenance is stabilized, this should be a std::ptr::invalid()
-    req_handle as CHttpRequestHandle
-}
-
-#[cfg(feature = "http")]
-unsafe extern "C" fn cancel_http_request(
-    creq_ptr: *mut tanker_http_request,
-    handle: CHttpRequestHandle,
-    data: *mut c_void,
-) {
-    let client = data as *const HttpClient;
-
-    // client is an Arc on the Rust side, but it's a raw pointer held by native, so Rust can't
-    // fully track its lifetime. Since Arc::drop will decrement the count, we must increment it
-    unsafe { Arc::increment_strong_count(client) };
-
-    // SAFETY: data is set to an Arc<HttpClient> in the tanker_options struct,
-    // and we trust native to not send requests after Core has been dropped
-    let client = unsafe { Arc::from_raw(client) };
-
-    // SAFETY: We trust the request struct from native
-    let req = unsafe { crate::http::HttpRequest::new(CHttpRequest(creq_ptr)) };
-    client.cancel_request(req, handle as usize);
-}
-
 pub struct CTankerLib {
     #[cfg(target_family = "windows")]
     ctanker_api: ctanker_api,
@@ -217,8 +168,8 @@ impl CTankerLib {
         let http_options = match http_client {
             #[cfg(feature = "http")]
             Some(client) => tanker_http_options {
-                send_request: Some(send_http_request),
-                cancel_request: Some(cancel_http_request),
+                send_request: Some(chttp::send_http_request),
+                cancel_request: Some(chttp::cancel_http_request),
                 data: Arc::as_ptr(&client) as *mut c_void,
             },
             _ => tanker_http_options {
@@ -260,34 +211,6 @@ impl CTankerLib {
     pub async unsafe fn destroy(&self, ctanker: CTankerPtr) {
         let fut = unsafe { CFuture::new(tanker_call!(self, tanker_destroy(ctanker.0))) };
         let _: Result<(), _> = fut.await; // Ignore errors, nothing useful we can do if destroy() fails
-    }
-
-    #[cfg(feature = "http")]
-    pub unsafe fn http_handle_response(
-        &self,
-        request: CHttpRequest,
-        response: crate::http::HttpResponse,
-    ) {
-        let mut cresponse = tanker_http_response_t {
-            error_msg: response
-                .error_msg
-                .as_ref()
-                .map(|s| s.as_ptr())
-                .unwrap_or(std::ptr::null()),
-            content_type: response
-                .content_type
-                .as_ref()
-                .map(|s| s.as_ptr())
-                .unwrap_or(std::ptr::null()),
-            body: response
-                .body
-                .as_ref()
-                .map(|s| s.as_ptr() as *const c_char)
-                .unwrap_or(std::ptr::null()),
-            body_size: response.body.as_ref().map(|v| v.len()).unwrap_or(0) as i64,
-            status_code: response.status_code as i32,
-        };
-        unsafe { tanker_call!(self, tanker_http_handle_response(request.0, &mut cresponse)) };
     }
 
     pub unsafe fn status(&self, ctanker: CTankerPtr) -> Status {
@@ -640,6 +563,36 @@ impl CTankerLib {
             ))
         };
         fut.await
+    }
+
+    #[cfg(feature = "experimental-oidc")]
+    pub async unsafe fn authenticate_with_idp(
+        &self,
+        ctanker: CTankerPtr,
+        provider_id: &CStr,
+        cookie: &CStr,
+    ) -> Result<crate::Verification, Error> {
+        let fut = unsafe {
+            CFuture::<*mut tanker_oidc_authorization_code_verification>::new(tanker_call!(
+                self,
+                tanker_authenticate_with_idp(ctanker.0, provider_id.as_ptr(), cookie.as_ptr(),)
+            ))
+        };
+        let cresult: &mut tanker_oidc_authorization_code_verification = unsafe { &mut *fut.await? };
+
+        // SAFETY: If we get a valid OIDCAuthorizationCode verification method, every field is a valid string
+        let c_authorization_code = unsafe { CStr::from_ptr(cresult.authorization_code) };
+        let authorization_code = c_authorization_code.to_str().unwrap().into();
+        let c_state = unsafe { CStr::from_ptr(cresult.state) };
+        let state = c_state.to_str().unwrap().into();
+
+        unsafe { tanker_call!(self, tanker_free_authenticate_with_idp_result(cresult)) }
+
+        Ok(crate::Verification::OIDCAuthorizationCode {
+            provider_id: provider_id.to_str().unwrap().into(),
+            authorization_code,
+            state,
+        })
     }
 
     pub async unsafe fn encryption_session_open(

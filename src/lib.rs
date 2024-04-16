@@ -28,4 +28,6 @@ mod verification;
 pub use verification::*;
 
 mod ctanker;
+
+#[cfg_attr(not(feature = "http"), path = "http_disabled.rs")]
 mod http;
