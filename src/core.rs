@@ -81,11 +81,19 @@ impl Core {
     }
 
     /// Creates a nonce to use during Oidc authorization code flow
+    #[deprecated(
+        since = "4.2.0",
+        note = "The entire OIDC flow has been reworked, this function has been deprecated as a result"
+    )]
     pub async fn create_oidc_nonce(&self) -> Result<String, Error> {
         unsafe { CTankerLib::get().create_oidc_nonce(self.ctanker).await }
     }
 
     /// Set the nonce to use for Oidc verification
+    #[deprecated(
+        since = "4.2.0",
+        note = "The entire OIDC flow has been reworked, this function has been deprecated as a result"
+    )]
     pub async fn set_oidc_test_nonce(&self, nonce: &str) -> Result<(), Error> {
         unsafe {
             CTankerLib::get()

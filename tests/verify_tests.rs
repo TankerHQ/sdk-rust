@@ -177,9 +177,12 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(&martine_identity).await?;
+    #[allow(deprecated)]
     let verif = Verification::OIDCIDToken(oidc_token);
 
+    #[allow(deprecated)]
     let nonce = tanker.create_oidc_nonce().await?;
+    #[allow(deprecated)]
     tanker.set_oidc_test_nonce(&nonce).await?;
     tanker
         .register_identity(&verif, &VerificationOptions::new())
@@ -187,7 +190,9 @@ async fn unlock_with_oidc_id_token() -> Result<(), Box<dyn std::error::Error>> {
     tanker.stop().await?;
 
     let tanker = Core::new(app.make_options()).await?;
+    #[allow(deprecated)]
     let nonce = tanker.create_oidc_nonce().await?;
+    #[allow(deprecated)]
     tanker.set_oidc_test_nonce(&nonce).await?;
     tanker.start(&martine_identity).await?;
     assert_eq!(tanker.status(), Status::IdentityVerificationNeeded);
@@ -553,9 +558,12 @@ async fn verify_identity_fail_with_preverified_oidc() -> Result<(), Box<dyn std:
 
     let tanker = Core::new(app.make_options()).await?;
     assert_eq!(tanker.start(id).await?, Status::IdentityRegistrationNeeded);
+    #[allow(deprecated)]
     let nonce = tanker.create_oidc_nonce().await?;
+    #[allow(deprecated)]
     tanker.set_oidc_test_nonce(&nonce).await?;
 
+    #[allow(deprecated)]
     let verif = Verification::OIDCIDToken(id_token);
     tanker
         .register_identity(&verif, &VerificationOptions::new())
@@ -718,6 +726,7 @@ async fn set_verification_method_with_preverified_oidc() -> Result<(), Box<dyn s
         *methods,
         [
             VerificationMethod::Passphrase,
+            #[allow(deprecated)]
             VerificationMethod::OIDCIDToken {
                 provider_id: oidc_provider.id,
                 provider_display_name: oidc_provider.display_name
@@ -729,8 +738,11 @@ async fn set_verification_method_with_preverified_oidc() -> Result<(), Box<dyn s
 
     let tanker = Core::new(app.make_options()).await?;
     tanker.start(id).await?;
+    #[allow(deprecated)]
     let nonce = tanker.create_oidc_nonce().await?;
+    #[allow(deprecated)]
     tanker.set_oidc_test_nonce(&nonce).await?;
+    #[allow(deprecated)]
     let verif = Verification::OIDCIDToken(id_token);
     tanker
         .verify_identity(&verif, &VerificationOptions::new())
@@ -774,6 +786,7 @@ async fn set_verification_method_with_oidc_authorization_code(
         methods,
         &[
             VerificationMethod::Passphrase,
+            #[allow(deprecated)]
             VerificationMethod::OIDCIDToken {
                 provider_id: oidc_provider.id.clone(),
                 provider_display_name: oidc_provider.display_name
