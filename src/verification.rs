@@ -219,6 +219,10 @@ pub enum Verification {
     Passphrase(String),
     VerificationKey(String),
     #[allow(clippy::upper_case_acronyms)]
+    #[deprecated(
+        since = "4.2.0",
+        note = "The entire OIDC flow has been reworked, this verification method has been deprecated as a result, use Verification::OIDCAuthorizationCode instead"
+    )]
     OIDCIDToken(String),
     PhoneNumber {
         phone_number: String,
@@ -249,6 +253,7 @@ impl Verification {
                 CVerificationWrapper::with_passphrase(passphrase)
             }
             Verification::VerificationKey(key) => CVerificationWrapper::with_verification_key(key),
+            #[allow(deprecated)]
             Verification::OIDCIDToken(token) => CVerificationWrapper::with_oidc_id_token(token),
             Verification::PhoneNumber {
                 phone_number,
