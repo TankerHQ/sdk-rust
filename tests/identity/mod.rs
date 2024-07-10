@@ -13,6 +13,7 @@ pub use oidc::{extract_subject, get_id_token, OIDCProvider};
 mod test_app;
 pub use test_app::TestApp;
 
+use base64::prelude::*;
 use blake2::digest::{consts, VariableOutput};
 use blake2::{Blake2b, Blake2bVar};
 use ed25519_dalek::{Signer, SigningKey};
@@ -70,8 +71,12 @@ pub fn create_identity(
         "Invalid argument to create_identity".into(),
     );
 
-    let app_id = base64::decode(b64_app_id).map_err(|_| invalid_arg.clone())?;
-    let app_secret = base64::decode(b64_app_secret).map_err(|_| invalid_arg.clone())?;
+    let app_id = BASE64_STANDARD
+        .decode(b64_app_id)
+        .map_err(|_| invalid_arg.clone())?;
+    let app_secret = BASE64_STANDARD
+        .decode(b64_app_secret)
+        .map_err(|_| invalid_arg.clone())?;
 
     if app_id.len() != BLOCK_HASH_SIZE || app_secret.len() != APP_SECRET_SIZE {
         return Err(invalid_arg);
@@ -93,14 +98,14 @@ pub fn create_identity(
     let json = json!({
         "trustchain_id": b64_app_id,
         "target": "user",
-        "value": base64::encode(&hashed_user_id),
-        "delegation_signature": base64::encode(signature.as_ref()),
-        "ephemeral_public_signature_key": base64::encode(sign_keypair.verifying_key()),
-        "ephemeral_private_signature_key": base64::encode(sign_keypair.to_keypair_bytes().as_ref()),
-        "user_secret": base64::encode(user_secret),
+        "value": BASE64_STANDARD.encode(&hashed_user_id),
+        "delegation_signature": BASE64_STANDARD.encode(signature.as_ref()),
+        "ephemeral_public_signature_key": BASE64_STANDARD.encode(sign_keypair.verifying_key()),
+        "ephemeral_private_signature_key": BASE64_STANDARD.encode(sign_keypair.to_keypair_bytes().as_ref()),
+        "user_secret": BASE64_STANDARD.encode(user_secret),
     });
 
-    Ok(base64::encode(json.to_string()))
+    Ok(BASE64_STANDARD.encode(json.to_string()))
 }
 
 pub fn create_provisional_identity(b64_app_id: &str, email: &str) -> Result<String, Error> {
@@ -109,7 +114,9 @@ pub fn create_provisional_identity(b64_app_id: &str, email: &str) -> Result<Stri
         "Invalid argument to create_provisional_identity".into(),
     );
 
-    let app_id = base64::decode(b64_app_id).map_err(|_| invalid_arg.clone())?;
+    let app_id = BASE64_STANDARD
+        .decode(b64_app_id)
+        .map_err(|_| invalid_arg.clone())?;
     if app_id.len() != BLOCK_HASH_SIZE {
         return Err(invalid_arg);
     }
@@ -122,13 +129,13 @@ pub fn create_provisional_identity(b64_app_id: &str, email: &str) -> Result<Stri
         "trustchain_id": b64_app_id,
         "target": "email",
         "value": email,
-        "public_encryption_key": base64::encode(encrypt_pk.as_bytes()),
-        "private_encryption_key": base64::encode(encrypt_sk.to_bytes()),
-        "public_signature_key": base64::encode(sign_keypair.verifying_key()),
-        "private_signature_key": base64::encode(sign_keypair.to_keypair_bytes().as_ref()),
+        "public_encryption_key": BASE64_STANDARD.encode(encrypt_pk.as_bytes()),
+        "private_encryption_key": BASE64_STANDARD.encode(encrypt_sk.to_bytes()),
+        "public_signature_key": BASE64_STANDARD.encode(sign_keypair.verifying_key()),
+        "private_signature_key": BASE64_STANDARD.encode(sign_keypair.to_keypair_bytes().as_ref()),
     });
 
-    Ok(base64::encode(json.to_string()))
+    Ok(BASE64_STANDARD.encode(json.to_string()))
 }
 
 pub fn get_public_identity(identity_b64: &str) -> Result<String, Error> {
@@ -139,7 +146,9 @@ pub fn get_public_identity(identity_b64: &str) -> Result<String, Error> {
         )
     };
 
-    let identity = base64::decode(identity_b64).map_err(|_| invalid_arg())?;
+    let identity = BASE64_STANDARD
+        .decode(identity_b64)
+        .map_err(|_| invalid_arg())?;
     let mut identity: Value = serde_json::from_slice(&identity).map_err(|_| invalid_arg())?;
 
     let public_fields: &[&str] = match identity["target"].as_str() {
@@ -165,5 +174,5 @@ pub fn get_public_identity(identity_b64: &str) -> Result<String, Error> {
         .collect::<serde_json::Map<_, _>>()
         .into();
 
-    Ok(base64::encode(public_identity.to_string()))
+    Ok(BASE64_STANDARD.encode(public_identity.to_string()))
 }

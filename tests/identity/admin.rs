@@ -5,6 +5,7 @@ pub use rest::admin_rest_request;
 use super::App;
 use super::OIDCProvider;
 use crate::identity::test_app::OidcConfig;
+use base64::prelude::*;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde_json::json;
 use tankersdk::Error;
@@ -98,8 +99,8 @@ impl Admin {
     }
 
     fn make_url(&self, id: &str) -> String {
-        let id = base64::decode(id).unwrap();
-        let id = base64::encode_config(id, base64::URL_SAFE_NO_PAD);
+        let id = BASE64_STANDARD.decode(id).unwrap();
+        let id = BASE64_URL_SAFE_NO_PAD.encode(id);
         format!("{}/v2/apps/{}", &self.app_management_url, id)
     }
 }
