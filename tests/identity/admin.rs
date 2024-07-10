@@ -5,6 +5,7 @@ pub use rest::admin_rest_request;
 use super::App;
 use super::OIDCProvider;
 use crate::identity::test_app::OidcConfig;
+use base64::prelude::*;
 use reqwest::header::{HeaderValue, ACCEPT, AUTHORIZATION};
 use serde_json::json;
 use tankersdk::Error;
@@ -44,7 +45,7 @@ impl Admin {
     }
 
     pub async fn create_app(&self, name: &str) -> Result<App, Error> {
-        let reply = admin_rest_request(self.client.post(&self.make_url("")).json(&json!({
+        let reply = admin_rest_request(self.client.post(self.make_url("")).json(&json!({
             "name": name,
             "environment_name": &self.environment_name,
         })))
@@ -60,7 +61,7 @@ impl Admin {
     }
 
     pub async fn delete_app(&self, id: &str) -> Result<(), Error> {
-        admin_rest_request(self.client.delete(&self.make_url(id))).await?;
+        admin_rest_request(self.client.delete(self.make_url(id))).await?;
         Ok(())
     }
 
@@ -98,8 +99,8 @@ impl Admin {
     }
 
     fn make_url(&self, id: &str) -> String {
-        let id = base64::decode(id).unwrap();
-        let id = base64::encode_config(id, base64::URL_SAFE_NO_PAD);
+        let id = BASE64_STANDARD.decode(id).unwrap();
+        let id = BASE64_URL_SAFE_NO_PAD.encode(id);
         format!("{}/v2/apps/{}", &self.app_management_url, id)
     }
 }

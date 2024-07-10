@@ -39,7 +39,7 @@ pub enum ErrorCode {
     IdentityAlreadyAttached = 15,
 
     #[num_enum(default)]
-    UnknownError = u32::max_value(),
+    UnknownError = u32::MAX,
 }
 
 /// Every Tanker function that may fail returns a Result<_, Error> type.

@@ -19,7 +19,7 @@ impl App {
         let client = reqwest::Client::new();
         let reply = admin_rest_request(
             client
-                .post(&format!("{}/verification/email/code", &self.url))
+                .post(format!("{}/verification/email/code", &self.url))
                 .json(
                     &json!({ "email": email, "app_id": &self.id, "auth_token": verification_api_token }),
                 )
@@ -39,7 +39,7 @@ impl App {
         let client = reqwest::Client::new();
         let reply = admin_rest_request(
             client
-                .post(&format!("{}/verification/sms/code", &self.url))
+                .post(format!("{}/verification/sms/code", &self.url))
                 .json(
                     &json!({ "phone_number": phone_number, "app_id": &self.id, "auth_token": verification_api_token }),
                 )
