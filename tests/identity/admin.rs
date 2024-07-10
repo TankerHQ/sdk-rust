@@ -44,7 +44,7 @@ impl Admin {
     }
 
     pub async fn create_app(&self, name: &str) -> Result<App, Error> {
-        let reply = admin_rest_request(self.client.post(&self.make_url("")).json(&json!({
+        let reply = admin_rest_request(self.client.post(self.make_url("")).json(&json!({
             "name": name,
             "environment_name": &self.environment_name,
         })))
@@ -60,7 +60,7 @@ impl Admin {
     }
 
     pub async fn delete_app(&self, id: &str) -> Result<(), Error> {
-        admin_rest_request(self.client.delete(&self.make_url(id))).await?;
+        admin_rest_request(self.client.delete(self.make_url(id))).await?;
         Ok(())
     }
 

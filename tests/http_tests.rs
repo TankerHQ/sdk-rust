@@ -15,7 +15,7 @@ use tokio::spawn;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-async fn spawn_test_http_server<T>(svc: impl Handler<T, ()> + Clone + Send + 'static) -> u16 {
+async fn spawn_test_http_server<T>(svc: impl Handler<T, ()> + 'static) -> u16 {
     let handler_thunk = |req: Request<Body>| async {
         svc.call(req, ()).await;
         (
