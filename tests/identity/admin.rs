@@ -77,6 +77,7 @@ impl Admin {
                     "issuer": oidc_provider.issuer.clone(),
                     "client_id": oidc_provider.client_id.clone(),
                     "display_name": oidc_provider.provider_name.clone(),
+                    "oidc_provider_group_id": "XH4OyFP7fRSkrFxBDgDmNGa40uCkvuPSLWQZSK7vb9Y",
                 }
             ]
         })))
