@@ -56,7 +56,7 @@ impl OidcConfig {
             client_secret: safe_get_env("TANKER_OIDC_CLIENT_SECRET"),
             provider_name: safe_get_env("TANKER_OIDC_PROVIDER"),
             issuer: safe_get_env("TANKER_OIDC_ISSUER"),
-            fake_oidc_issuer_url: format!("{}/issuer", safe_get_env("TANKER_FAKE_OIDC_URL")),
+            fake_oidc_issuer_url: format!("{}/issuers/main", safe_get_env("TANKER_FAKE_OIDC_URL")),
             users: vec![
                 (
                     "martine".into(),
