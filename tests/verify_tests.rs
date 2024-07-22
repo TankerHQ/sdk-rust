@@ -1,3 +1,6 @@
+// Overzealous performance lint that exists only in clippy 1.79 (was removed later)
+#![allow(clippy::assigning_clones)]
+
 mod identity;
 
 use crate::identity::{extract_subject, get_id_token};
