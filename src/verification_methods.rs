@@ -25,6 +25,7 @@ pub enum VerificationMethod {
     E2ePassphrase,
     // PreverifiedOIDC is not exposed as a VerificationMethod
     // OIDCAuthorizationCode is not exposed as a VerificationMethod
+    // PrehashedAndEncryptedPassphrase is not exposed as a VerificationMethod
 }
 
 #[derive(FromPrimitive)]
@@ -42,6 +43,7 @@ enum CMethodType {
     E2ePassphrase = 8,
     // PreverifiedOIDC = 9, PreverifiedOIDC is not exposed as a VerificationMethod
     // OIDCAuthorizationCode = 10, OIDCAuthorizationCode is not exposed as a VerificationMethod
+    // PrehashedAndEncryptedPassphrase = 11, PrehashedAndEncryptedPassphraseis not exposed as a VerificationMethod
     #[num_enum(default)]
     Invalid,
 }
