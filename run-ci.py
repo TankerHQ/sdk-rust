@@ -110,7 +110,7 @@ def get_android_bin_path() -> Path:
 
 
 def bind_gen(
-        *, header_source: Path, output_file: Path, include_path: Path, dynamic_loading: bool
+    *, header_source: Path, output_file: Path, include_path: Path, dynamic_loading: bool
 ) -> None:
     args = []
     if dynamic_loading:
@@ -133,7 +133,7 @@ def bind_gen(
 
 class Builder:
     def __init__(
-            self, *, src_path: Path, build_profile: Profile, host_profile: Profile
+        self, *, src_path: Path, build_profile: Profile, host_profile: Profile
     ):
         self.src_path = src_path
         self.host_profile = host_profile
@@ -187,7 +187,9 @@ class Builder:
     # This is necessary on 64bit android archs, as Clang doesn't build them by default,
     # and Google's NDK distribution doesn't take care of that either...
     @staticmethod
-    def _armerge_soft_float128_compiler_rt_builtins(compiler_rt_lib: Path, output_path: Path, env: dict[str, str]):
+    def _armerge_soft_float128_compiler_rt_builtins(
+        compiler_rt_lib: Path, output_path: Path, env: dict[str, str]
+    ) -> None:
         f128_builtins = [
             "__addtf3",
             "__subtf3",
@@ -230,7 +232,7 @@ class Builder:
             "__multc3",
             "__divtc3",
         ]
-        keep_symbol_args = [e for sym_name in f128_builtins for e in ['-k', sym_name]]
+        keep_symbol_args = [e for sym_name in f128_builtins for e in ["-k", sym_name]]
 
         tankerci.run(
             "armerge",
@@ -243,7 +245,7 @@ class Builder:
         )
 
     def _merge_all_libs(
-            self, depsConfig: DepsConfig, package_path: Path, native_path: Path
+        self, depsConfig: DepsConfig, package_path: Path, native_path: Path
     ) -> None:
         with tankerci.working_directory(package_path):
             env = os.environ.copy()
@@ -266,18 +268,28 @@ class Builder:
                 ndk_arch = NDK_ARCH_TARGETS[self.arch]
                 android_lib_path = android_bin_path / f"../sysroot/usr/lib/{ndk_arch}"
 
-                # Starting with NDK r23, Google in its infinite wisdom has decided to make things more interesting
+                # Starting with NDK r23, Google in its infinite wisdom has decided to make things
+                # more interesting
                 # libgcc is gone, and now we use clang's libcxx and compiler-rt.
-                # Unfortunately, the libcxx_static.a is currently missing soft float128 builtins for 64bit archs
-                # (See https://reviews.llvm.org/D53608 and https://github.com/llvm/llvm-project/issues/51395)
+                # Unfortunately, the libcxx_static.a is currently missing soft float128 builtins
+                # for 64bit archs (See https://reviews.llvm.org/D53608 and
+                # https://github.com/llvm/llvm-project/issues/51395)
                 # It is possible to find those symbols in the separate libclang_rt.builtins libs
-                # However, we can't pull in all of rt.builtins, or we will have duplicate symbols and fail linking
-                if self.arch in ['x86_64', 'armv8']:
+                # However, we can't pull in all of rt.builtins, or we will have duplicate symbols
+                # and fail linking
+                if self.arch in ["x86_64", "armv8"]:
                     compiler_rt_arch = CLANG_RT_ARCH_TARGETS[self.arch]
-                    compiler_rt_dir = android_bin_path / f"../lib/clang/17/lib/linux/"
-                    compiler_rt_lib = compiler_rt_dir / f"libclang_rt.builtins-{compiler_rt_arch}.a"
-                    out_path = cxx_package_libs / f"libclang_rt.builtins.float128-{compiler_rt_arch}.a"
-                    self._armerge_soft_float128_compiler_rt_builtins(compiler_rt_lib, out_path, env)
+                    compiler_rt_dir = android_bin_path / "../lib/clang/17/lib/linux/"
+                    compiler_rt_lib = (
+                        compiler_rt_dir / f"libclang_rt.builtins-{compiler_rt_arch}.a"
+                    )
+                    out_path = (
+                        cxx_package_libs
+                        / f"libclang_rt.builtins.float128-{compiler_rt_arch}.a"
+                    )
+                    self._armerge_soft_float128_compiler_rt_builtins(
+                        compiler_rt_lib, out_path, env
+                    )
 
                 for lib in android_lib_path.glob("*.a"):
                     # Rust already links some (non-C++) NDK libs, skip to avoid duplicate symbols
@@ -374,10 +386,10 @@ class Builder:
             shutil.copyfile(native_path / "ctanker.rs", mingw_path / "ctanker.rs")
 
     def prepare(
-            self,
-            update: bool,
-            tanker_source: TankerSource,
-            tanker_ref: Optional[str] = None,
+        self,
+        update: bool,
+        tanker_source: TankerSource,
+        tanker_ref: Optional[str] = None,
     ) -> None:
         tanker_deployed_ref = tanker_ref
         if tanker_source == TankerSource.DEPLOYED and not tanker_ref:
@@ -469,11 +481,11 @@ class Builder:
 
 
 def prepare(
-        tanker_source: TankerSource,
-        *,
-        profiles: List[Profile],
-        update: bool = False,
-        tanker_ref: Optional[str] = None,
+    tanker_source: TankerSource,
+    *,
+    profiles: List[Profile],
+    update: bool = False,
+    tanker_ref: Optional[str] = None,
 ) -> None:
     build_profile = tankerci.conan.get_build_profile()
     for host_profile in profiles:
@@ -484,9 +496,9 @@ def prepare(
 
 
 def build(
-        *,
-        profiles: List[Profile],
-        test: bool = False,
+    *,
+    profiles: List[Profile],
+    test: bool = False,
 ) -> None:
     build_profile = tankerci.conan.get_build_profile()
     if os.environ.get("CI"):
@@ -591,7 +603,7 @@ def main() -> None:
     if args.command == "build":
         profiles = [Profile(p) for p in args.profiles]
         with tankerci.conan.ConanContextManager(
-                [args.remote, "conancenter"], conan_home=user_home
+            [args.remote, "conancenter"], conan_home=user_home
         ):
             build(
                 profiles=profiles,
@@ -601,7 +613,7 @@ def main() -> None:
         deploy(args)
     elif args.command == "prepare":
         with tankerci.conan.ConanContextManager(
-                [args.remote, "conancenter"], conan_home=user_home
+            [args.remote, "conancenter"], conan_home=user_home
         ):
             profiles = [Profile(p) for p in args.profiles]
             prepare(
