@@ -689,7 +689,7 @@ struct EncryptionOptionsWrapper<'a> {
 unsafe impl Send for EncryptionOptionsWrapper<'_> {}
 
 impl EncryptionOptions {
-    fn to_c_encryption_options<'a>(&'a self) -> EncryptionOptionsWrapper {
+    fn to_c_encryption_options<'a>(&'a self) -> EncryptionOptionsWrapper<'a> {
         let share_with_users = self
             .share_with_users
             .iter()
