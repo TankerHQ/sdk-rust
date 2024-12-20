@@ -4,7 +4,7 @@ use crate::ctanker::{
 };
 use std::ffi::CString;
 
-const CVERIFICATION_VERSION: u8 = 8;
+const CVERIFICATION_VERSION: u8 = 9;
 const CEMAIL_VERIFICATION_VERSION: u8 = 1;
 const CPHONE_NUMBER_VERIFICATION_VERSION: u8 = 1;
 const CPREVERIFIED_OIDC_VERIFICATION_VERSION: u8 = 1;
@@ -23,6 +23,7 @@ enum Type {
     E2ePassphrase = 8,
     PreverifiedOIDC = 9,
     OIDCAuthorizationCode = 10,
+    PrehashedAndEncryptedPassphrase = 11,
 }
 
 pub(crate) struct CVerificationWrapper {
@@ -68,6 +69,7 @@ impl CVerificationWrapper {
                     authorization_code: std::ptr::null(),
                     state: std::ptr::null(),
                 },
+                prehashed_and_encrypted_passphrase: std::ptr::null(),
             },
         }
     }
@@ -166,6 +168,19 @@ impl CVerificationWrapper {
         wrapper
     }
 
+    pub(self) fn with_prehashed_and_encrypted_passphrase(
+        prehashed_and_encrypted_passphrase: &str,
+    ) -> Self {
+        let mut wrapper = Self::new();
+        let cpaep = CString::new(prehashed_and_encrypted_passphrase).unwrap();
+
+        wrapper.cverif.verification_method_type = Type::PrehashedAndEncryptedPassphrase as u8;
+        wrapper.cverif.prehashed_and_encrypted_passphrase = cpaep.as_ptr();
+
+        wrapper.cstrings.push(cpaep);
+        wrapper
+    }
+
     pub(self) fn with_preverifed_oidc(subject: &str, provider_id: &str) -> Self {
         let mut wrapper = Self::new();
         let csubject = CString::new(subject).unwrap();
@@ -240,6 +255,7 @@ pub enum Verification {
         authorization_code: String,
         state: String,
     },
+    PrehashedAndEncryptedPassphrase(String),
 }
 
 impl Verification {
@@ -281,6 +297,11 @@ impl Verification {
                 authorization_code,
                 state,
             ),
+            Verification::PrehashedAndEncryptedPassphrase(prehashed_and_encrypted_passphrase) => {
+                CVerificationWrapper::with_prehashed_and_encrypted_passphrase(
+                    prehashed_and_encrypted_passphrase,
+                )
+            }
         }
     }
 }
