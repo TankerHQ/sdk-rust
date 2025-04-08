@@ -70,6 +70,9 @@ unsafe impl Send for CVerificationPtr {}
 // SAFETY: ctanker is thread-safe
 unsafe impl Send for tanker_http_options {}
 
+// SAFETY: ctanker is thread-safe
+unsafe impl Sync for CTankerLib {}
+
 pub(crate) static RUST_SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub(crate) static RUST_SDK_TYPE: &str = "client-rust";
 
