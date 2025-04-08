@@ -15,6 +15,7 @@ pub struct Options {
 }
 
 impl Options {
+    #[allow(clippy::doc_overindented_list_items)]
     /// # Arguments
     /// * `app_id` - Your Tanker App ID
     /// * `persistent_path` - A writable folder. Tanker will use this folder to
