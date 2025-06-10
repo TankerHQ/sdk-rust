@@ -2,5 +2,4 @@
 /conan
 /target
 /release
-Cargo.lock
 .cache
